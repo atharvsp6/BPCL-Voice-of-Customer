@@ -1465,6 +1465,7 @@ def main():
         """
         <div style='text-align: center; color: #6b7280; padding: 1rem;'>
             <p>📊 BPCL Reviews Analytics Dashboard | Built with Streamlit & Plotly</p>
+            <p>Built by Atharv Patil</p>
         </div>
         """, 
         unsafe_allow_html=True
