@@ -52,9 +52,23 @@ api_keys.txt
 *.ipynb
 *.log
 
-# Keep large raw data files local
-hello_bpcl_reviews_100k.csv
+# Development/scraper scripts (not needed for dashboard)
+harvester_*.py
+scraper.py
+generate_synthetic_reviews.py
 
-# Data files (optional - uncomment if you want to exclude raw data)
-# *.csv
-# raw_reviews.csv
+# Large raw data files (keep local)
+hello_bpcl_reviews_100k.csv
+raw_reviews.csv
+reviews_*.csv
+
+# Pickle files (models can be regenerated)
+*.pkl
+
+# PDF documentation (too large for repo)
+*.pdf
+
+# Only keep essential CSV files for dashboard
+# df_final_enriched.csv - KEEP (required)
+# confusion_matrix_data.json - KEEP (required)
+# topic_keywords.json - KEEP (required)
