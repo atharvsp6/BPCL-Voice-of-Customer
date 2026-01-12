@@ -65,8 +65,11 @@ def get_theme_colors():
         }
 
 def apply_theme_css():
-    """Apply theme-specific CSS"""
+    """Apply theme-specific CSS with improved dark mode readability"""
     theme_colors = get_theme_colors()
+    text_color = theme_colors['text']
+    secondary_text = theme_colors['text'] if st.session_state.theme == 'light' else '#B0B8C1'
+    
     st.markdown(f"""
     <style>
         :root {{
@@ -75,35 +78,119 @@ def apply_theme_css():
             --text-color: {theme_colors['text']};
         }}
         
+        /* Main content text - High contrast */
         .main-header {{
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
+            color: {text_color};
         }}
         
         .sub-header {{
             font-size: 1rem;
-            opacity: 0.8;
+            opacity: 0.9;
             margin-bottom: 2rem;
+            color: {secondary_text};
         }}
         
         .metric-card {{
             background-color: {theme_colors['secondary_bg']};
             padding: 1.2rem;
             border-radius: 0.75rem;
-            border: 1px solid rgba(28, 131, 225, 0.2);
+            border: 1px solid rgba(28, 131, 225, 0.3);
         }}
         
+        /* Improve text readability */
+        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {{
+            font-weight: 600;
+            color: {text_color};
+        }}
+        
+        .stMarkdown p, .stMarkdown div, .stMarkdown span {{
+            color: {text_color};
+        }}
+        
+        /* Metric labels and values */
+        [data-testid="metric-container"] {{
+            background-color: {theme_colors['secondary_bg']};
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid #1c83e1;
+        }}
+        
+        /* Caption text */
+        .stCaption {{
+            color: {secondary_text};
+        }}
+        
+        /* Sidebar improvements */
         div[data-testid="stSidebarContent"] {{
             background-color: {theme_colors['secondary_bg']};
         }}
         
-        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {{
+        div[data-testid="stSidebarContent"] h2 {{
+            color: {text_color};
+            font-weight: 700;
+        }}
+        
+        div[data-testid="stSidebarContent"] h3 {{
+            color: {text_color};
             font-weight: 600;
         }}
         
+        div[data-testid="stSidebarContent"] p {{
+            color: {secondary_text};
+        }}
+        
+        div[data-testid="stSidebarContent"] label {{
+            color: {secondary_text};
+        }}
+        
+        /* Expander text */
+        .streamlit-expanderHeader {{
+            color: {text_color};
+        }}
+        
+        /* Chart backgrounds - Transparent for better theme integration */
         .js-plotly-plot {{
             background: transparent !important;
+        }}
+        
+        /* Tab text */
+        .stTabs [data-baseweb="tab"] {{
+            color: {secondary_text};
+        }}
+        
+        .stTabs [aria-selected="true"] {{
+            color: {text_color};
+        }}
+        
+        /* Button text */
+        .stButton button {{
+            color: {text_color};
+        }}
+        
+        /* Input field text */
+        .stTextInput input {{
+            color: {text_color};
+        }}
+        
+        .stSelectbox select {{
+            color: {text_color};
+        }}
+        
+        .stSlider {{
+            color: {text_color};
+        }}
+        
+        /* Legend and annotations */
+        .plotly-notifier {{
+            color: {text_color};
+        }}
+        
+        /* Divider line */
+        hr {{
+            border-color: rgba(200, 200, 200, 0.2);
         }}
     </style>
     """, unsafe_allow_html=True)
@@ -215,7 +302,13 @@ def create_density_plot(df, column, title):
         showlegend=False,
         plot_bgcolor=colors['plot_bg'],
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_gridcolor=colors['grid']
+        xaxis_gridcolor=colors['grid'],
+        title_font_color=colors['text'],
+        xaxis_title_font_color=colors['text'],
+        yaxis_title_font_color=colors['text'],
+        xaxis_tickfont_color=colors['text'],
+        yaxis_tickfont_color=colors['text'],
+        font_color=colors['text']
     )
     
     return fig
@@ -231,7 +324,13 @@ def create_violin_plot(df, y_col, x_col, title):
         height=350,
         plot_bgcolor=colors['plot_bg'],
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_gridcolor=colors['grid']
+        xaxis_gridcolor=colors['grid'],
+        title_font_color=colors['text'],
+        xaxis_title_font_color=colors['text'],
+        yaxis_title_font_color=colors['text'],
+        xaxis_tickfont_color=colors['text'],
+        yaxis_tickfont_color=colors['text'],
+        font_color=colors['text']
     )
     
     return fig
@@ -255,7 +354,14 @@ def create_sentiment_heatmap(df, topic_keywords):
         fig.update_layout(
             height=350,
             plot_bgcolor=colors['plot_bg'],
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            title_font_color=colors['text'],
+            xaxis_title_font_color=colors['text'],
+            yaxis_title_font_color=colors['text'],
+            xaxis_tickfont_color=colors['text'],
+            yaxis_tickfont_color=colors['text'],
+            font_color=colors['text'],
+            coloraxis_colorbar_tickfont_color=colors['text']
         )
         
         return fig
@@ -264,17 +370,18 @@ def create_sentiment_heatmap(df, topic_keywords):
 
 def create_gauge_chart(value, title="Sentiment Health"):
     """Create gauge chart"""
+    colors = get_theme_colors()
     normalized = (value + 1) * 50
     
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=normalized,
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': title, 'font': {'size': 18}},
-        number={'font': {'size': 36}, 'suffix': '%'},
+        title={'text': title, 'font': {'size': 18, 'color': colors['text']}},
+        number={'font': {'size': 36, 'color': colors['text']}, 'suffix': '%'},
         delta={'reference': 50},
         gauge={
-            'axis': {'range': [0, 100]},
+            'axis': {'range': [0, 100], 'tickcolor': colors['text'], 'tickfont': {'color': colors['text']}},
             'bar': {'color': "#3b82f6"},
             'bgcolor': "rgba(128, 128, 128, 0.1)",
             'steps': [
@@ -289,7 +396,8 @@ def create_gauge_chart(value, title="Sentiment Health"):
         height=280,
         margin=dict(l=30, r=30, t=60, b=30),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color=colors['text']
     )
     
     return fig
@@ -458,11 +566,18 @@ def page_overview(df, topic_keywords):
     
     with col_right:
         st.markdown("### 📊 Sentiment Distribution")
+        colors = get_theme_colors()
         sentiment_counts = filtered_df['ai_sentiment'].value_counts()
         fig_dist = px.pie(values=sentiment_counts.values, names=sentiment_counts.index,
                          title="Overall Sentiment Breakdown",
                          color_discrete_map={'Positive': '#10b981', 'Negative': '#ef4444', 'Neutral': '#f59e0b'})
-        fig_dist.update_layout(height=350, paper_bgcolor='rgba(0,0,0,0)')
+        fig_dist.update_layout(
+            height=350, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            title_font_color=colors['text'],
+            font_color=colors['text'],
+            legend_font_color=colors['text']
+        )
         st.plotly_chart(fig_dist, use_container_width=True)
     
     st.markdown("---")
@@ -470,6 +585,7 @@ def page_overview(df, topic_keywords):
     # Timeline
     if 'at' in filtered_df.columns and len(filtered_df) > 0:
         st.markdown("### 📈 Sentiment Trends Over Time")
+        colors = get_theme_colors()
         daily_sentiment = filtered_df.groupby(filtered_df['at'].dt.date).agg({'sentiment_score': 'mean'}).reset_index()
         
         fig_timeline = px.line(
@@ -478,7 +594,19 @@ def page_overview(df, topic_keywords):
             title="Daily Average Sentiment Trend",
             markers=True
         )
-        fig_timeline.update_layout(height=300, paper_bgcolor='rgba(0,0,0,0)')
+        fig_timeline.update_layout(
+            height=300, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor=colors['plot_bg'],
+            xaxis_gridcolor=colors['grid'],
+            title_font_color=colors['text'],
+            xaxis_title_font_color=colors['text'],
+            yaxis_title_font_color=colors['text'],
+            xaxis_tickfont_color=colors['text'],
+            yaxis_tickfont_color=colors['text'],
+            font_color=colors['text'],
+            hovermode='x unified'
+        )
         st.plotly_chart(fig_timeline, use_container_width=True)
 
 # =============================================================================
@@ -498,10 +626,22 @@ def page_topics(df, topic_keywords):
     
     with col1:
         st.markdown("### 📊 Topic Distribution")
+        colors = get_theme_colors()
         topic_counts = filtered_df['Topic_Label'].value_counts()
         fig_topics = px.bar(x=topic_counts.values, y=topic_counts.index,
                            orientation='h', title="Topics by Review Count")
-        fig_topics.update_layout(height=300, paper_bgcolor='rgba(0,0,0,0)')
+        fig_topics.update_layout(
+            height=300, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor=colors['plot_bg'],
+            xaxis_gridcolor=colors['grid'],
+            title_font_color=colors['text'],
+            xaxis_title_font_color=colors['text'],
+            yaxis_title_font_color=colors['text'],
+            xaxis_tickfont_color=colors['text'],
+            yaxis_tickfont_color=colors['text'],
+            font_color=colors['text']
+        )
         st.plotly_chart(fig_topics, use_container_width=True)
     
     with col2:
@@ -590,6 +730,7 @@ def page_sentiment(df, topic_keywords):
     pos_keywords = get_top_keywords(pos_texts, n=10)
     
     if neg_keywords and pos_keywords:
+        colors = get_theme_colors()
         fig_comp = make_subplots(
             rows=1, cols=2,
             subplot_titles=("🔴 Negative Keywords", "🟢 Positive Keywords"),
@@ -610,7 +751,22 @@ def page_sentiment(df, topic_keywords):
             row=1, col=2
         )
         
-        fig_comp.update_layout(height=350, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
+        fig_comp.update_layout(
+            height=350, 
+            showlegend=False, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor=colors['plot_bg'],
+            xaxis_gridcolor=colors['grid'],
+            xaxis2_gridcolor=colors['grid'],
+            title_font_color=colors['text'],
+            xaxis_title_font_color=colors['text'],
+            yaxis_title_font_color=colors['text'],
+            xaxis_tickfont_color=colors['text'],
+            yaxis_tickfont_color=colors['text'],
+            font_color=colors['text']
+        )
+        fig_comp.update_xaxes(title_text="Count", row=1, col=1)
+        fig_comp.update_xaxes(title_text="Count", row=1, col=2)
         st.plotly_chart(fig_comp, use_container_width=True)
 
 # =============================================================================
