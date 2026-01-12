@@ -22,6 +22,7 @@ import json
 from collections import Counter
 import re
 from datetime import datetime, timedelta
+import altair as alt
 
 # =============================================================================
 # PAGE CONFIGURATION
@@ -40,160 +41,460 @@ if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
 def get_theme_colors():
-    """Get colors based on current theme"""
+    """Get colors based on current theme - BPCL Enterprise color palette"""
     if st.session_state.theme == 'dark':
         return {
-            'bg': '#0E1117',
-            'secondary_bg': '#161B22',
-            'text': '#C9D1D9',
-            'plot_bg': 'rgba(22, 27, 34, 0.7)',
-            'grid': 'rgba(48, 54, 61, 0.5)',
-            'positive': '#3FB950',
-            'negative': '#F85149',
-            'neutral': '#79C0FF'
+            # BPCL Dark Theme - Deep Navy Base
+            'bg': '#0f1419',              # Deep charcoal navy (page background)
+            'secondary_bg': '#1a2332',    # Elevated navy (sidebar, elevated sections)
+            'card_bg': '#212d3d',         # Card background with depth
+            'card_hover': '#263447',      # Card hover state
+            
+            # Text Hierarchy
+            'text': '#f0f3f7',            # Primary text - high contrast white
+            'text_bright': '#ffffff',     # KPI values - brightest
+            'secondary_text': '#8a98ab',  # Labels and secondary info
+            'tertiary_text': '#5e6c7f',   # Captions and hints
+            
+            # BPCL Brand Accents
+            'primary': '#1e88e5',         # Petroleum blue (BPCL primary)
+            'primary_glow': 'rgba(30, 136, 229, 0.25)',
+            'accent_green': '#00c853',    # Energy green (success, positive)
+            'accent_orange': '#ff6f00',   # Petroleum orange (warnings, highlights)
+            
+            # Sentiment Colors (Energy industry)
+            'positive': '#00c853',        # Energy green
+            'negative': '#ff3d00',        # Alert red
+            'neutral': '#ffa726',         # Amber
+            
+            # UI Elements
+            'border': 'rgba(138, 152, 171, 0.15)',
+            'border_bright': 'rgba(30, 136, 229, 0.4)',
+            'divider': 'rgba(138, 152, 171, 0.1)',
+            
+            # Chart Styling
+            'plot_bg': '#1a2332',
+            'grid': 'rgba(138, 152, 171, 0.08)',
+            'grid_major': 'rgba(138, 152, 171, 0.12)'
         }
     else:
         return {
-            'bg': '#FFFFFF',
-            'secondary_bg': '#F0F2F6',
-            'text': '#262730',
-            'plot_bg': 'rgba(255, 255, 255, 0.7)',
-            'grid': 'rgba(200, 200, 200, 0.3)',
+            'bg': '#ffffff',
+            'secondary_bg': '#f8f9fa',
+            'text': '#1f2937',
+            'text_bright': '#111827',
+            'secondary_text': '#6b7280',
+            'tertiary_text': '#9ca3af',
+            'plot_bg': '#ffffff',
+            'grid': 'rgba(107, 114, 128, 0.2)',
+            'grid_major': 'rgba(107, 114, 128, 0.3)',
             'positive': '#10b981',
             'negative': '#ef4444',
-            'neutral': '#f59e0b'
+            'neutral': '#f59e0b',
+            'primary': '#1e88e5',
+            'accent_green': '#10b981',
+            'accent_orange': '#f59e0b',
+            'border': 'rgba(229, 231, 235, 1)',
+            'card_bg': '#ffffff',
+            'card_hover': '#f9fafb',
+            'divider': 'rgba(229, 231, 235, 0.8)',
+            'primary_glow': 'rgba(30, 136, 229, 0.15)',
+            'border_bright': 'rgba(30, 136, 229, 0.3)'
         }
 
 def apply_theme_css():
-    """Apply theme-specific CSS with improved dark mode readability"""
+    """Apply BPCL Enterprise Dark Theme CSS"""
     theme_colors = get_theme_colors()
-    text_color = theme_colors['text']
-    secondary_text = theme_colors['text'] if st.session_state.theme == 'light' else '#B0B8C1'
+    is_dark = st.session_state.theme == 'dark'
     
-    st.markdown(f"""
-    <style>
-        :root {{
-            --bg-color: {theme_colors['bg']};
-            --secondary-bg: {theme_colors['secondary_bg']};
-            --text-color: {theme_colors['text']};
-        }}
-        
-        /* Main content text - High contrast */
-        .main-header {{
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: {text_color};
-        }}
-        
-        .sub-header {{
-            font-size: 1rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-            color: {secondary_text};
-        }}
-        
-        .metric-card {{
-            background-color: {theme_colors['secondary_bg']};
-            padding: 1.2rem;
-            border-radius: 0.75rem;
-            border: 1px solid rgba(28, 131, 225, 0.3);
-        }}
-        
-        /* Improve text readability */
-        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {{
-            font-weight: 600;
-            color: {text_color};
-        }}
-        
-        .stMarkdown p, .stMarkdown div, .stMarkdown span {{
-            color: {text_color};
-        }}
-        
-        /* Metric labels and values */
-        [data-testid="metric-container"] {{
-            background-color: {theme_colors['secondary_bg']};
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border-left: 4px solid #1c83e1;
-        }}
-        
-        /* Caption text */
-        .stCaption {{
-            color: {secondary_text};
-        }}
-        
-        /* Sidebar improvements */
-        div[data-testid="stSidebarContent"] {{
-            background-color: {theme_colors['secondary_bg']};
-        }}
-        
-        div[data-testid="stSidebarContent"] h2 {{
-            color: {text_color};
-            font-weight: 700;
-        }}
-        
-        div[data-testid="stSidebarContent"] h3 {{
-            color: {text_color};
-            font-weight: 600;
-        }}
-        
-        div[data-testid="stSidebarContent"] p {{
-            color: {secondary_text};
-        }}
-        
-        div[data-testid="stSidebarContent"] label {{
-            color: {secondary_text};
-        }}
-        
-        /* Expander text */
-        .streamlit-expanderHeader {{
-            color: {text_color};
-        }}
-        
-        /* Chart backgrounds - Transparent for better theme integration */
-        .js-plotly-plot {{
-            background: transparent !important;
-        }}
-        
-        /* Tab text */
-        .stTabs [data-baseweb="tab"] {{
-            color: {secondary_text};
-        }}
-        
-        .stTabs [aria-selected="true"] {{
-            color: {text_color};
-        }}
-        
-        /* Button text */
-        .stButton button {{
-            color: {text_color};
-        }}
-        
-        /* Input field text */
-        .stTextInput input {{
-            color: {text_color};
-        }}
-        
-        .stSelectbox select {{
-            color: {text_color};
-        }}
-        
-        .stSlider {{
-            color: {text_color};
-        }}
-        
-        /* Legend and annotations */
-        .plotly-notifier {{
-            color: {text_color};
-        }}
-        
-        /* Divider line */
-        hr {{
-            border-color: rgba(200, 200, 200, 0.2);
-        }}
-    </style>
-    """, unsafe_allow_html=True)
+    # BPCL Dark Theme CSS
+    if is_dark:
+        st.markdown(f"""
+        <style>
+            /* ============================================
+               BPCL ENTERPRISE DARK THEME
+               Deep Navy Base with Petroleum Blue Accents
+            ============================================ */
+            
+            /* Global Background Layering */
+            .stApp {{
+                background-color: {theme_colors['bg']} !important;
+            }}
+            
+            .main .block-container {{
+                background-color: {theme_colors['bg']} !important;
+                padding-top: 2rem !important;
+            }}
+            
+            /* Typography Hierarchy */
+            .main-header {{
+                font-size: 2.8rem;
+                font-weight: 800;
+                letter-spacing: -0.02em;
+                margin-bottom: 0.5rem;
+                color: {theme_colors['text_bright']} !important;
+                text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }}
+            
+            .sub-header {{
+                font-size: 1.1rem;
+                font-weight: 400;
+                letter-spacing: 0.01em;
+                margin-bottom: 2.5rem;
+                color: {theme_colors['secondary_text']} !important;
+            }}
+            
+            /* All Markdown Text - Ensure Visibility - AGGRESSIVE */
+            .stMarkdown h1, .stMarkdown h2 {{
+                font-weight: 700;
+                color: #ffffff !important;
+            }}
+            
+            .stMarkdown h3 {{
+                font-weight: 600;
+                font-size: 1.4rem;
+                color: {theme_colors['text']} !important;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                border-bottom: 2px solid {theme_colors['divider']};
+                padding-bottom: 0.5rem;
+            }}
+            
+            .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {{
+                font-weight: 600;
+                color: {theme_colors['text']} !important;
+            }}
+            
+            .stMarkdown p, .stMarkdown div, .stMarkdown span, .stMarkdown li {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* Force all text elements to be visible */
+            p, div, span, label, input, textarea, select, button {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* Expander content text */
+            .streamlit-expanderContent p,
+            .streamlit-expanderContent div,
+            .streamlit-expanderContent span {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* Dataframe text */
+            .stDataFrame, .stDataFrame * {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* ============================================
+               KPI METRIC CARDS - Enterprise Style
+            ============================================ */
+            [data-testid="metric-container"] {{
+                background: linear-gradient(135deg, {theme_colors['card_bg']} 0%, {theme_colors['secondary_bg']} 100%) !important;
+                padding: 1.25rem 1.5rem !important;
+                border-radius: 12px !important;
+                border: 1px solid {theme_colors['border_bright']} !important;
+                box-shadow: 
+                    0 4px 12px rgba(0, 0, 0, 0.3),
+                    0 0 20px {theme_colors['primary_glow']},
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+                transition: all 0.3s ease !important;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            [data-testid="metric-container"]::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 4px;
+                height: 100%;
+                background: linear-gradient(180deg, {theme_colors['primary']} 0%, {theme_colors['accent_green']} 100%);
+            }}
+            
+            [data-testid="metric-container"]:hover {{
+                transform: translateY(-2px);
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.4),
+                    0 0 30px {theme_colors['primary_glow']},
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+                border-color: {theme_colors['primary']} !important;
+            }}
+            
+            /* Metric Labels - Uppercase, Tracked */
+            [data-testid="metric-container"] label,
+            [data-testid="metric-container"] > div > div:first-child {{
+                color: {theme_colors['secondary_text']} !important;
+                font-size: 0.75rem !important;
+                font-weight: 600 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.08em !important;
+            }}
+            
+            /* Metric Values - Maximum Brightness - FORCE */
+            [data-testid="metric-container"] [data-testid="stMetricValue"],
+            [data-testid="metric-container"] > div > div:nth-child(2),
+            [data-testid="metric-container"] div[data-testid="stMetricValue"] > div {{
+                color: #ffffff !important;
+                font-size: 2rem !important;
+                font-weight: 700 !important;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+            }}
+            
+            /* Metric Delta */
+            [data-testid="metric-container"] [data-testid="stMetricDelta"],
+            [data-testid="metric-container"] [data-testid="stMetricDelta"] > div {{
+                color: {theme_colors['accent_green']} !important;
+                font-size: 0.9rem !important;
+                font-weight: 500 !important;
+            }}
+            
+            /* ============================================
+               SIDEBAR - Elevated Dark Panel
+            ============================================ */
+            section[data-testid="stSidebar"] {{
+                background: linear-gradient(180deg, {theme_colors['secondary_bg']} 0%, {theme_colors['card_bg']} 100%) !important;
+                border-right: 1px solid {theme_colors['border']} !important;
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
+            }}
+            
+            section[data-testid="stSidebar"] > div {{
+                background: transparent !important;
+            }}
+            
+            /* Sidebar Headers */
+            div[data-testid="stSidebarContent"] h1,
+            div[data-testid="stSidebarContent"] h2 {{
+                color: {theme_colors['text_bright']} !important;
+                font-weight: 700 !important;
+                font-size: 1.4rem !important;
+                margin-top: 1.5rem !important;
+                margin-bottom: 1rem !important;
+            }}
+            
+            div[data-testid="stSidebarContent"] h3 {{
+                color: {theme_colors['text']} !important;
+                font-weight: 600 !important;
+                font-size: 1.1rem !important;
+                margin-top: 1.2rem !important;
+            }}
+            
+            /* Sidebar Text - FORCE VISIBILITY */
+            div[data-testid="stSidebarContent"] p,
+            div[data-testid="stSidebarContent"] label,
+            div[data-testid="stSidebarContent"] span,
+            div[data-testid="stSidebarContent"] div {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* Sidebar Metric Values - Extra Bright */
+            div[data-testid="stSidebarContent"] [data-testid="stMetricValue"],
+            div[data-testid="stSidebarContent"] [data-testid="stMetricValue"] div {{
+                color: #ffffff !important;
+                font-size: 1.5rem !important;
+                font-weight: 700 !important;
+            }}
+            
+            /* Sidebar Metric Labels */
+            div[data-testid="stSidebarContent"] [data-testid="metric-container"] label {{
+                color: {theme_colors['secondary_text']} !important;
+                font-size: 0.7rem !important;
+            }}
+            
+            /* Sidebar Input Fields */
+            div[data-testid="stSidebarContent"] input,
+            div[data-testid="stSidebarContent"] textarea {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border']} !important;
+                color: {theme_colors['text']} !important;
+                border-radius: 8px !important;
+            }}
+            
+            div[data-testid="stSidebarContent"] input:focus,
+            div[data-testid="stSidebarContent"] textarea:focus {{
+                border-color: {theme_colors['primary']} !important;
+                box-shadow: 0 0 0 3px {theme_colors['primary_glow']} !important;
+            }}
+            
+            /* Sidebar Selectbox */
+            div[data-testid="stSidebarContent"] [data-baseweb="select"] {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border']} !important;
+                border-radius: 8px !important;
+            }}
+            
+            div[data-testid="stSidebarContent"] [data-baseweb="select"] * {{
+                color: {theme_colors['text']} !important;
+            }}
+            
+            /* Selectbox dropdown items */
+            [data-baseweb="popover"] {{
+                background-color: {theme_colors['card_bg']} !important;
+            }}
+            
+            [role="option"] {{
+                color: {theme_colors['text']} !important;
+                background-color: {theme_colors['card_bg']} !important;
+            }}
+            
+            [role="option"]:hover {{
+                background-color: {theme_colors['card_hover']} !important;
+            }}
+            
+            /* Sidebar Buttons */
+            div[data-testid="stSidebarContent"] button {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border_bright']} !important;
+                color: {theme_colors['text']} !important;
+                border-radius: 8px !important;
+                font-weight: 600 !important;
+                transition: all 0.2s ease !important;
+            }}
+            
+            div[data-testid="stSidebarContent"] button:hover {{
+                background-color: {theme_colors['card_hover']} !important;
+                border-color: {theme_colors['primary']} !important;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3) !important;
+            }}
+            
+            /* ============================================
+               INTERACTIVE ELEMENTS
+            ============================================ */
+            
+            /* Expanders */
+            .streamlit-expanderHeader {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border']} !important;
+                border-radius: 8px !important;
+                color: {theme_colors['text']} !important;
+                font-weight: 600 !important;
+            }}
+            
+            .streamlit-expanderHeader:hover {{
+                border-color: {theme_colors['primary']} !important;
+                background-color: {theme_colors['card_hover']} !important;
+            }}
+            
+            /* Expander Content - CRITICAL for review text visibility */
+            .streamlit-expanderContent {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border']} !important;
+                border-top: none !important;
+                border-radius: 0 0 8px 8px !important;
+                padding: 1rem !important;
+            }}
+            
+            .streamlit-expanderContent p,
+            .streamlit-expanderContent div,
+            .streamlit-expanderContent span,
+            .streamlit-expanderContent pre,
+            .streamlit-expanderContent code {{
+                color: {theme_colors['text']} !important;
+                background-color: transparent !important;
+            }}
+            
+            /* Tabs */
+            .stTabs [data-baseweb="tab-list"] {{
+                gap: 8px;
+                background-color: {theme_colors['secondary_bg']};
+                padding: 0.5rem;
+                border-radius: 10px;
+            }}
+            
+            .stTabs [data-baseweb="tab"] {{
+                color: {theme_colors['secondary_text']} !important;
+                font-weight: 600;
+                border-radius: 6px;
+                padding: 0.5rem 1rem;
+            }}
+            
+            .stTabs [aria-selected="true"] {{
+                background-color: {theme_colors['card_bg']} !important;
+                color: {theme_colors['text_bright']} !important;
+                border: 1px solid {theme_colors['border_bright']} !important;
+            }}
+            
+            /* Dataframes */
+            .stDataFrame {{
+                background-color: {theme_colors['card_bg']} !important;
+                border: 1px solid {theme_colors['border']} !important;
+                border-radius: 8px !important;
+            }}
+            
+            /* Dividers */
+            hr {{
+                border-color: {theme_colors['divider']} !important;
+                margin: 2rem 0 !important;
+            }}
+            
+            /* ============================================
+               CHARTS & VISUALIZATIONS
+            ============================================ */
+            .js-plotly-plot {{
+                background: transparent !important;
+            }}
+            
+            .plot-container {{
+                background-color: {theme_colors['card_bg']} !important;
+                border-radius: 12px !important;
+                padding: 1rem !important;
+                border: 1px solid {theme_colors['border']} !important;
+            }}
+            
+            /* Caption text */
+            .stCaption {{
+                color: {theme_colors['tertiary_text']} !important;
+                font-size: 0.85rem !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        # Light theme - minimal styling
+        st.markdown("""
+        <style>
+            .main-header {{
+                font-size: 2.5rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+            }}
+            
+            .sub-header {{
+                font-size: 1rem;
+                margin-bottom: 2rem;
+                opacity: 0.8;
+            }}
+            
+            /* Button text */
+            .stButton button {{
+                color: inherit;
+            }}
+            
+            /* Input field text */
+            .stTextInput input {{
+                color: inherit;
+            }}
+            
+            .stSelectbox select {{
+                color: inherit;
+            }}
+            
+            .stSlider {{
+                color: inherit;
+            }}
+            
+            /* Legend and annotations */
+            .plotly-notifier {{
+                color: inherit;
+            }}
+            
+            /* Divider line */
+            hr {{
+                border-color: rgba(200, 200, 200, 0.2);
+            }}
+        </style>
+        """, unsafe_allow_html=True)
 
 apply_theme_css()
 
@@ -290,78 +591,138 @@ def search_reviews(df, query):
     return df[mask]
 
 def create_density_plot(df, column, title):
-    """Create density plot"""
+    """Create BPCL-style density plot with dark theme support"""
     colors = get_theme_colors()
+    is_dark = st.session_state.theme == 'dark'
     
     fig = px.histogram(df, x=column, nbins=50, marginal="box",
                        title=title,
-                       color_discrete_sequence=[colors['neutral']])
+                       color_discrete_sequence=[colors['primary']])
+    
+    fig.update_traces(
+        marker_line_color=colors.get('border_bright', colors['border']),
+        marker_line_width=0.5,
+        opacity=0.85
+    )
     
     fig.update_layout(
-        height=300,
+        height=320,
         showlegend=False,
         plot_bgcolor=colors['plot_bg'],
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_gridcolor=colors['grid'],
-        title_font_color=colors['text'],
-        xaxis_title_font_color=colors['text'],
-        yaxis_title_font_color=colors['text'],
-        xaxis_tickfont_color=colors['text'],
-        yaxis_tickfont_color=colors['text'],
-        font_color=colors['text']
+        xaxis=dict(
+            gridcolor=colors['grid'],
+            gridwidth=1,
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        yaxis=dict(
+            gridcolor=colors.get('grid_major', colors['grid']),
+            gridwidth=1,
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        title=dict(
+            font=dict(color=colors.get('text_bright', colors['text']), size=16),
+            x=0.05
+        ),
+        font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+        margin=dict(l=50, r=30, t=60, b=50)
     )
     
     return fig
 
 def create_violin_plot(df, y_col, x_col, title):
-    """Create violin plot for rating distribution"""
+    """Create BPCL-style violin plot with dark theme support"""
     colors = get_theme_colors()
+    is_dark = st.session_state.theme == 'dark'
     
     fig = px.violin(df, y=y_col, x=x_col, box=True, points="outliers",
-                    title=title)
+                    title=title,
+                    color_discrete_sequence=[colors['primary'], colors['accent_green'], colors.get('accent_orange', colors['neutral'])])
+    
+    fig.update_traces(
+        marker_line_width=1.5,
+        marker_line_color=colors.get('border_bright', colors['border']),
+        opacity=0.8
+    )
     
     fig.update_layout(
-        height=350,
+        height=380,
         plot_bgcolor=colors['plot_bg'],
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_gridcolor=colors['grid'],
-        title_font_color=colors['text'],
-        xaxis_title_font_color=colors['text'],
-        yaxis_title_font_color=colors['text'],
-        xaxis_tickfont_color=colors['text'],
-        yaxis_tickfont_color=colors['text'],
-        font_color=colors['text']
+        xaxis=dict(
+            gridcolor=colors['grid'],
+            gridwidth=1,
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        yaxis=dict(
+            gridcolor=colors.get('grid_major', colors['grid']),
+            gridwidth=1,
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        title=dict(
+            font=dict(color=colors.get('text_bright', colors['text']), size=16),
+            x=0.05
+        ),
+        font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+        margin=dict(l=50, r=30, t=60, b=50)
     )
     
     return fig
 
 def create_sentiment_heatmap(df, topic_keywords):
-    """Create sentiment vs topic heatmap"""
+    """Create BPCL-style sentiment vs topic heatmap with dark theme support"""
     colors = get_theme_colors()
+    is_dark = st.session_state.theme == 'dark'
     
     if 'Topic_Label' in df.columns and 'ai_sentiment' in df.columns:
         heatmap_data = pd.crosstab(df['ai_sentiment'], df['Topic_Label'], normalize='index') * 100
+        
+        # BPCL color scale - green to red for sentiment
+        color_scale = [[0, colors['negative']], [0.5, colors['neutral']], [1, colors['positive']]]
         
         fig = px.imshow(
             heatmap_data.values,
             x=heatmap_data.columns.tolist(),
             y=heatmap_data.index.tolist(),
-            color_continuous_scale='RdYlGn',
+            color_continuous_scale=color_scale,
             labels=dict(color='% Distribution'),
-            title='Sentiment Distribution by Topic (%)'
+            title='Sentiment Distribution by Topic (%)',
+            aspect='auto'
+        )
+        
+        fig.update_traces(
+            text=heatmap_data.values.round(1),
+            texttemplate='%{text}%',
+            textfont=dict(size=11, color=colors.get('text_bright', colors['text']))
         )
         
         fig.update_layout(
-            height=350,
+            height=380,
             plot_bgcolor=colors['plot_bg'],
             paper_bgcolor='rgba(0,0,0,0)',
-            title_font_color=colors['text'],
-            xaxis_title_font_color=colors['text'],
-            yaxis_title_font_color=colors['text'],
-            xaxis_tickfont_color=colors['text'],
-            yaxis_tickfont_color=colors['text'],
-            font_color=colors['text'],
-            coloraxis_colorbar_tickfont_color=colors['text']
+            xaxis=dict(
+                tickfont=dict(color=colors['secondary_text'], size=11),
+                title=dict(font=dict(color=colors['text'], size=13)),
+                side='bottom'
+            ),
+            yaxis=dict(
+                tickfont=dict(color=colors['secondary_text'], size=11),
+                title=dict(font=dict(color=colors['text'], size=13))
+            ),
+            title=dict(
+                font=dict(color=colors.get('text_bright', colors['text']), size=16),
+                x=0.05
+            ),
+            font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+            coloraxis_colorbar=dict(
+                tickfont=dict(color=colors['secondary_text'], size=10),
+                title=dict(font=dict(color=colors['text'], size=12))
+            ),
+            margin=dict(l=50, r=30, t=60, b=50)
         )
         
         return fig
@@ -369,35 +730,55 @@ def create_sentiment_heatmap(df, topic_keywords):
     return None
 
 def create_gauge_chart(value, title="Sentiment Health"):
-    """Create gauge chart"""
+    """Create BPCL-style gauge chart with dark theme support"""
     colors = get_theme_colors()
+    is_dark = st.session_state.theme == 'dark'
     normalized = (value + 1) * 50
     
+    # BPCL color scheme for gauge
+    bar_color = colors['primary']
+    if normalized >= 66:
+        bar_color = colors['accent_green']
+    elif normalized <= 33:
+        bar_color = colors['negative']
+    
     fig = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
+        mode="gauge+number",
         value=normalized,
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': title, 'font': {'size': 18, 'color': colors['text']}},
-        number={'font': {'size': 36, 'color': colors['text']}, 'suffix': '%'},
-        delta={'reference': 50},
+        title={'text': title, 'font': {'size': 20, 'color': colors.get('text_bright', colors['text'])}},
+        number={
+            'font': {'size': 42, 'color': colors.get('text_bright', colors['text'])}, 
+            'suffix': '%'
+        },
         gauge={
-            'axis': {'range': [0, 100], 'tickcolor': colors['text'], 'tickfont': {'color': colors['text']}},
-            'bar': {'color': "#3b82f6"},
-            'bgcolor': "rgba(128, 128, 128, 0.1)",
+            'axis': {
+                'range': [0, 100], 
+                'tickcolor': colors.get('grid_major', colors['grid']), 
+                'tickfont': {'color': colors['secondary_text'], 'size': 11}
+            },
+            'bar': {'color': bar_color, 'thickness': 0.8},
+            'bgcolor': "rgba(128, 128, 128, 0.05)" if is_dark else "rgba(128, 128, 128, 0.1)",
+            'borderwidth': 0,
             'steps': [
-                {'range': [0, 33], 'color': 'rgba(239, 68, 68, 0.2)'},
-                {'range': [33, 66], 'color': 'rgba(250, 204, 21, 0.2)'},
-                {'range': [66, 100], 'color': 'rgba(16, 185, 129, 0.2)'}
-            ]
+                {'range': [0, 33], 'color': f'rgba(255, 61, 0, {0.12 if is_dark else 0.2})'},
+                {'range': [33, 66], 'color': f'rgba(255, 167, 38, {0.12 if is_dark else 0.2})'},
+                {'range': [66, 100], 'color': f'rgba(0, 200, 83, {0.12 if is_dark else 0.2})'}
+            ],
+            'threshold': {
+                'line': {'color': colors.get('text_bright', colors['text']), 'width': 2},
+                'thickness': 0.75,
+                'value': normalized
+            }
         }
     ))
     
     fig.update_layout(
-        height=280,
-        margin=dict(l=30, r=30, t=60, b=30),
+        height=300,
+        margin=dict(l=20, r=20, t=70, b=20),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font_color=colors['text']
+        font={'color': colors['text'], 'family': 'Inter, system-ui, sans-serif'}
     )
     
     return fig
@@ -443,12 +824,38 @@ def setup_sidebar_filters(df, topic_keywords):
     if 'at' in df.columns:
         min_date = df['at'].min()
         max_date = df['at'].max()
-        date_range = st.sidebar.date_input(
-            "📅 Date Range",
-            value=(min_date.date(), max_date.date()),
-            min_value=min_date.date(),
-            max_value=max_date.date()
+        
+        st.sidebar.markdown(f"📅 **Date Range** (Latest: {max_date.date()})")
+        
+        # Preset date ranges based on max_date
+        date_preset = st.sidebar.selectbox(
+            "Quick Select:",
+            ["All Data", "Past Week", "Past Month", "Past 3 Months", "Past Year", "Custom"],
+            label_visibility="collapsed"
         )
+        
+        if date_preset == "All Data":
+            date_range = (min_date.date(), max_date.date())
+        elif date_preset == "Past Week":
+            start = max_date - timedelta(days=7)
+            date_range = (start.date(), max_date.date())
+        elif date_preset == "Past Month":
+            start = max_date - timedelta(days=30)
+            date_range = (start.date(), max_date.date())
+        elif date_preset == "Past 3 Months":
+            start = max_date - timedelta(days=90)
+            date_range = (start.date(), max_date.date())
+        elif date_preset == "Past Year":
+            start = max_date - timedelta(days=365)
+            date_range = (start.date(), max_date.date())
+        else:  # Custom
+            date_range = st.sidebar.date_input(
+                "Select custom range:",
+                value=(min_date.date(), max_date.date()),
+                min_value=min_date.date(),
+                max_value=max_date.date(),
+                label_visibility="collapsed"
+            )
     else:
         date_range = None
     
@@ -526,22 +933,52 @@ def setup_sidebar_filters(df, topic_keywords):
 def page_overview(df, topic_keywords):
     """Overview page with key metrics and gauges"""
     filtered_df, search_query = setup_sidebar_filters(df, topic_keywords)
+    colors = get_theme_colors()
     
     st.markdown('<h1 class="main-header">📊 BPCL Reviews Analytics Dashboard</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">AI-Powered Sentiment Analysis & Topic Insights</p>', unsafe_allow_html=True)
     
-    # Key metrics
+    # Key metrics row 1
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        avg_rating = filtered_df['score'].mean() if 'score' in filtered_df.columns else 0
+        st.metric("⭐ Average Rating", f"{avg_rating:.2f}", 
+                 f"{(avg_rating/5*100):.1f}%")
+    
+    with col2:
+        total_reviews = len(filtered_df)
+        st.metric("📊 Total Reviews", f"{total_reviews:,}", 
+                 f"{len(df):,} all-time")
+    
+    with col3:
         avg_sentiment = filtered_df['sentiment_score'].mean() if 'sentiment_score' in filtered_df.columns else 0
         st.metric("🎯 Avg Sentiment", f"{avg_sentiment:.3f}", 
                  "Positive" if avg_sentiment > 0 else "Negative")
     
-    with col2:
+    with col4:
+        if 'at' in filtered_df.columns and len(filtered_df) > 0:
+            latest_date = filtered_df['at'].max()
+            days_ago = (datetime.now() - latest_date).days
+            st.metric("📅 Latest Review", latest_date.strftime('%Y-%m-%d'), 
+                     f"{days_ago} days ago")
+        else:
+            st.metric("📋 Unique Versions", filtered_df['appVersion'].nunique())
+    
+    st.markdown("---")
+    
+    # Sentiment breakdown - Key metrics row 2
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
         neg_count = len(filtered_df[filtered_df['ai_sentiment'] == 'Negative'])
         neg_pct = neg_count / len(filtered_df) * 100 if len(filtered_df) > 0 else 0
         st.metric("🔴 Negative", f"{neg_count:,}", f"{neg_pct:.1f}%")
+    
+    with col2:
+        neu_count = len(filtered_df[filtered_df['ai_sentiment'] == 'Neutral'])
+        neu_pct = neu_count / len(filtered_df) * 100 if len(filtered_df) > 0 else 0
+        st.metric("🟡 Neutral", f"{neu_count:,}", f"{neu_pct:.1f}%")
     
     with col3:
         pos_count = len(filtered_df[filtered_df['ai_sentiment'] == 'Positive'])
@@ -549,13 +986,99 @@ def page_overview(df, topic_keywords):
         st.metric("🟢 Positive", f"{pos_count:,}", f"{pos_pct:.1f}%")
     
     with col4:
-        neu_count = len(filtered_df[filtered_df['ai_sentiment'] == 'Neutral'])
-        neu_pct = neu_count / len(filtered_df) * 100 if len(filtered_df) > 0 else 0
-        st.metric("🟡 Neutral", f"{neu_count:,}", f"{neu_pct:.1f}%")
+        if len(filtered_df) > 0:
+            response_rate = (neg_pct + pos_pct)
+            st.metric("💬 Response Rate", f"{response_rate:.2f}%", 
+                     f"{100-response_rate:.1f}% neutral")
     
     st.markdown("---")
     
-    # Sentiment gauge and distribution
+    # Main timeline chart with Altair
+    if 'at' in filtered_df.columns and len(filtered_df) > 0:
+        st.markdown("### 📈 Review Volume & Sentiment Trends")
+        
+        # Prepare daily data
+        daily_data = filtered_df.copy()
+        daily_data['date'] = daily_data['at'].dt.date
+        
+        # Aggregate by date and sentiment
+        timeline_df = daily_data.groupby(['date', 'ai_sentiment']).size().reset_index(name='count')
+        
+        # Create BPCL-styled Altair chart
+        is_dark = st.session_state.theme == 'dark'
+        
+        base = alt.Chart(timeline_df).encode(
+            x=alt.X('date:T', 
+                   title='Date', 
+                   axis=alt.Axis(
+                       format='%b %Y', 
+                       labelAngle=-45,
+                       labelColor=colors['secondary_text'],
+                       titleColor=colors['text'],
+                       titleFontSize=13,
+                       labelFontSize=10,
+                       gridColor=colors['grid'],
+                       domainColor=colors['border']
+                   ))
+        )
+        
+        line = base.mark_line(point=alt.OverlayMarkDef(size=60, filled=True), strokeWidth=3, interpolate='monotone').encode(
+            y=alt.Y('count:Q', 
+                   title='Number of Reviews',
+                   axis=alt.Axis(
+                       labelColor=colors['secondary_text'],
+                       titleColor=colors['text'],
+                       titleFontSize=13,
+                       labelFontSize=10,
+                       gridColor=colors.get('grid_major', colors['grid']),
+                       domainColor=colors['border']
+                   )),
+            color=alt.Color('ai_sentiment:N', 
+                          scale=alt.Scale(
+                              domain=['Negative', 'Neutral', 'Positive'],
+                              range=[colors['negative'], colors['neutral'], colors['positive']]
+                          ),
+                          legend=alt.Legend(
+                              title='Sentiment',
+                              titleColor=colors['text'],
+                              titleFontSize=12,
+                              labelColor=colors['text'],
+                              labelFontSize=11,
+                              orient='top-right',
+                              fillColor=colors.get('card_bg', colors['secondary_bg']) if is_dark else 'white',
+                              strokeColor=colors['border'],
+                              padding=10,
+                              cornerRadius=8
+                          )),
+            tooltip=[
+                alt.Tooltip('date:T', title='Date', format='%Y-%m-%d'),
+                alt.Tooltip('ai_sentiment:N', title='Sentiment'),
+                alt.Tooltip('count:Q', title='Reviews', format=',')
+            ]
+        )
+        
+        chart = line.properties(
+            height=360,
+            title=alt.TitleParams(
+                text='Daily Review Volume by Sentiment',
+                fontSize=16,
+                color=colors.get('text_bright', colors['text']),
+                anchor='start',
+                offset=10
+            ),
+            background=colors.get('plot_bg', colors['secondary_bg'])
+        ).configure_view(
+            strokeWidth=0,
+            fill=colors.get('plot_bg', colors['secondary_bg'])
+        ).configure_axis(
+            grid=True
+        )
+        
+        st.altair_chart(chart, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Row: Gauge + Distribution
     col_left, col_right = st.columns([1, 1])
     
     with col_left:
@@ -563,51 +1086,105 @@ def page_overview(df, topic_keywords):
         global_sentiment = filtered_df['sentiment_score'].mean() if 'sentiment_score' in filtered_df.columns else 0
         gauge_fig = create_gauge_chart(global_sentiment, "Sentiment Score")
         st.plotly_chart(gauge_fig, use_container_width=True)
+        
+        # Interpretation
+        if global_sentiment > 0.3:
+            st.success("✅ Overall sentiment is **POSITIVE**")
+        elif global_sentiment < -0.3:
+            st.error("⚠️ Overall sentiment is **NEGATIVE**")
+        else:
+            st.warning("➡️ Overall sentiment is **NEUTRAL**")
     
     with col_right:
         st.markdown("### 📊 Sentiment Distribution")
-        colors = get_theme_colors()
         sentiment_counts = filtered_df['ai_sentiment'].value_counts()
         fig_dist = px.pie(values=sentiment_counts.values, names=sentiment_counts.index,
                          title="Overall Sentiment Breakdown",
-                         color_discrete_map={'Positive': '#10b981', 'Negative': '#ef4444', 'Neutral': '#f59e0b'})
+                         color_discrete_map={'Positive': colors['positive'], 
+                                           'Negative': colors['negative'], 
+                                           'Neutral': colors['neutral']},
+                         hole=0.45)
+        fig_dist.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            textfont=dict(size=13, color=colors.get('text_bright', colors['text'])),
+            marker=dict(line=dict(color=colors.get('border_bright', colors['border']), width=1.5))
+        )
         fig_dist.update_layout(
             height=350, 
             paper_bgcolor='rgba(0,0,0,0)',
-            title_font_color=colors['text'],
-            font_color=colors['text'],
-            legend_font_color=colors['text']
+            plot_bgcolor='rgba(0,0,0,0)',
+            title=dict(
+                font=dict(color=colors.get('text_bright', colors['text']), size=16),
+                x=0.5,
+                xanchor='center'
+            ),
+            font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+            legend=dict(
+                font=dict(color=colors['text'], size=12),
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor=colors['border'],
+                borderwidth=1
+            ),
+            margin=dict(l=20, r=20, t=60, b=20)
         )
         st.plotly_chart(fig_dist, use_container_width=True)
     
     st.markdown("---")
     
-    # Timeline
-    if 'at' in filtered_df.columns and len(filtered_df) > 0:
-        st.markdown("### 📈 Sentiment Trends Over Time")
-        colors = get_theme_colors()
-        daily_sentiment = filtered_df.groupby(filtered_df['at'].dt.date).agg({'sentiment_score': 'mean'}).reset_index()
+    # Rating distribution
+    if 'score' in filtered_df.columns:
+        st.markdown("### ⭐ Rating Distribution")
         
-        fig_timeline = px.line(
-            daily_sentiment,
-            x='at', y='sentiment_score',
-            title="Daily Average Sentiment Trend",
-            markers=True
-        )
-        fig_timeline.update_layout(
-            height=300, 
+        rating_counts = filtered_df['score'].value_counts().sort_index()
+        
+        fig_rating = go.Figure(data=[
+            go.Bar(
+                x=rating_counts.index,
+                y=rating_counts.values,
+                marker=dict(
+                    color=[colors['negative'], colors['negative'], colors['neutral'], 
+                          colors['positive'], colors['positive']],
+                    line=dict(color=colors.get('border_bright', colors['border']), width=1.2)
+                ),
+                text=rating_counts.values,
+                textposition='outside',
+                textfont=dict(size=12, color=colors.get('text_bright', colors['text'])),
+                hovertemplate='<b>%{x} Stars</b><br>Count: %{y:,}<extra></extra>',
+                opacity=0.9
+            )
+        ])
+        
+        fig_rating.update_layout(
+            title=dict(
+                text="Distribution by Star Rating",
+                font=dict(color=colors.get('text_bright', colors['text']), size=16),
+                x=0.05
+            ),
+            xaxis=dict(
+                title=dict(text="Star Rating", font=dict(color=colors['text'], size=13)),
+                gridcolor=colors['grid'],
+                gridwidth=1,
+                tickfont=dict(color=colors['secondary_text'], size=11),
+                tickmode='linear',
+                tick0=1,
+                dtick=1
+            ),
+            yaxis=dict(
+                title=dict(text="Number of Reviews", font=dict(color=colors['text'], size=13)),
+                gridcolor=colors.get('grid_major', colors['grid']),
+                gridwidth=1,
+                tickfont=dict(color=colors['secondary_text'], size=11)
+            ),
+            height=320,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor=colors['plot_bg'],
-            xaxis_gridcolor=colors['grid'],
-            title_font_color=colors['text'],
-            xaxis_title_font_color=colors['text'],
-            yaxis_title_font_color=colors['text'],
-            xaxis_tickfont_color=colors['text'],
-            yaxis_tickfont_color=colors['text'],
-            font_color=colors['text'],
-            hovermode='x unified'
+            font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+            margin=dict(l=50, r=30, t=60, b=50),
+            bargap=0.3
         )
-        st.plotly_chart(fig_timeline, use_container_width=True)
+        
+        st.plotly_chart(fig_rating, use_container_width=True)
 
 # =============================================================================
 # PAGE: TOPICS
