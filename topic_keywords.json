@@ -1,0 +1,32 @@
+{
+  "negative_topics": {
+    "1": [
+      "login",
+      "app",
+      "open",
+      "otp",
+      "verification"
+    ],
+    "2": [
+      "payment",
+      "transaction",
+      "money",
+      "account",
+      "bank"
+    ],
+    "3": [
+      "update",
+      "version",
+      "new",
+      "work",
+      "earlier"
+    ],
+    "4": [
+      "reward",
+      "point",
+      "redeem",
+      "offer",
+      "discount"
+    ]
+  }
+}

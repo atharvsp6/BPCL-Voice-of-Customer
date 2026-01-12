@@ -1,0 +1,56 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+.vscode/
+.ipynb_checkpoints/
+*.log
+
+# Keep notebooks local for development
+*.ipynb
+
+# Keep large raw data files local
+hello_bpcl_reviews_100k.csv
+
+# Keep virtual environment local
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
