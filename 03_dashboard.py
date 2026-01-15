@@ -1579,18 +1579,28 @@ def page_aspects(topic_keywords):
                 st.metric("Negative", f"{negative_pct:.0f}%", delta="(1-2 stars)")
         
         st.markdown("---")
-        
-        # Display reviews table
-        st.markdown(f"#### Review Texts for Aspect: **{selected_aspect}**")
-        
+
+        # Prepare sorted table and download before rendering cards
         display_columns = ['Date', 'Rating', 'Review_Text', 'App_Version', 'Sentiment']
         available_columns = [col for col in display_columns if col in aspect_reviews.columns]
         
-        # Sort by date descending
+        # Sort by date descending for consistent download and display
         if 'Date' in aspect_reviews.columns:
             aspect_reviews_sorted = aspect_reviews.sort_values('Date', ascending=False)
         else:
             aspect_reviews_sorted = aspect_reviews
+
+        # Download button placed above the review list
+        csv_buffer = aspect_reviews_sorted[available_columns].to_csv(index=False)
+        st.download_button(
+            label=f"📥 Download {selected_aspect} Reviews ({len(aspect_reviews)} rows)",
+            data=csv_buffer,
+            file_name=f"aspect_{selected_aspect.replace(' ', '_')}_reviews.csv",
+            mime="text/csv"
+        )
+
+        # Display reviews table
+        st.markdown(f"#### Review Texts for Aspect: **{selected_aspect}**")
         
         # Display as expandable cards
         for idx, (_, row) in enumerate(aspect_reviews_sorted.iterrows()):
@@ -1612,15 +1622,8 @@ def page_aspects(topic_keywords):
                 with exp_col4:
                     st.caption(f"**Sentiment:** {sentiment}")
         
-        # Option to download filtered data
+        # Spacer after cards
         st.markdown("---")
-        csv_buffer = aspect_reviews_sorted[available_columns].to_csv(index=False)
-        st.download_button(
-            label=f"📥 Download {selected_aspect} Reviews ({len(aspect_reviews)} rows)",
-            data=csv_buffer,
-            file_name=f"aspect_{selected_aspect.replace(' ', '_')}_reviews.csv",
-            mime="text/csv"
-        )
     else:
         st.warning("No data available for the selected sentiment.")
 
