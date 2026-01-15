@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "last_updated": "2026-01-16 01:49:35",
+    "report_type": "Competitive Deep Dive Analysis",
+    "brands_compared": [
+      "BPCL",
+      "IOCL"
+    ],
+    "analysis_scope": "Head-to-Head Competitive Benchmarking"
+  },
+  "feature_war": {
+    "description": "Aspect-based competitive comparison",
+    "total_aspects": 4,
+    "data": [
+      {
+        "Aspect": "LPG Booking",
+        "BPCL_Score": 3.086910994764398,
+        "IOCL_Score": 2.707089552238806,
+        "Delta": 0.3798214425255919,
+        "Winner": "BPCL",
+        "BPCL_Review_Count": 1910,
+        "IOCL_Review_Count": 536
+      },
+      {
+        "Aspect": "Rewards",
+        "BPCL_Score": 1.8636363636363635,
+        "IOCL_Score": 2.1776649746192893,
+        "Delta": -0.3140286109829258,
+        "Winner": "IOCL",
+        "BPCL_Review_Count": 44,
+        "IOCL_Review_Count": 197
+      },
+      {
+        "Aspect": "App Tech",
+        "BPCL_Score": 1.9051321928460343,
+        "IOCL_Score": 2.1940298507462686,
+        "Delta": -0.28889765790023425,
+        "Winner": "IOCL",
+        "BPCL_Review_Count": 643,
+        "IOCL_Review_Count": 469
+      },
+      {
+        "Aspect": "Payment",
+        "BPCL_Score": 1.618421052631579,
+        "IOCL_Score": 1.375,
+        "Delta": 0.24342105263157898,
+        "Winner": "BPCL",
+        "BPCL_Review_Count": 152,
+        "IOCL_Review_Count": 40
+      }
+    ]
+  },
+  "personas": {
+    "description": "User segmentation and preference analysis",
+    "total_segments": 6,
+    "data": [
+      {
+        "Brand": "BPCL",
+        "Persona": "General",
+        "Avg_Rating": 4.3,
+        "Review_Count": 20176,
+        "Share_of_Voice_%": 79.41
+      },
+      {
+        "Brand": "BPCL",
+        "Persona": "Tech Savvy",
+        "Avg_Rating": 3.7,
+        "Review_Count": 5141,
+        "Share_of_Voice_%": 20.23
+      },
+      {
+        "Brand": "BPCL",
+        "Persona": "Trucker/Fleet",
+        "Avg_Rating": 2.1,
+        "Review_Count": 90,
+        "Share_of_Voice_%": 0.35
+      },
+      {
+        "Brand": "IOCL",
+        "Persona": "General",
+        "Avg_Rating": 4.2,
+        "Review_Count": 9297,
+        "Share_of_Voice_%": 77.04
+      },
+      {
+        "Brand": "IOCL",
+        "Persona": "Tech Savvy",
+        "Avg_Rating": 3.21,
+        "Review_Count": 2658,
+        "Share_of_Voice_%": 22.03
+      },
+      {
+        "Brand": "IOCL",
+        "Persona": "Trucker/Fleet",
+        "Avg_Rating": 2.16,
+        "Review_Count": 112,
+        "Share_of_Voice_%": 0.93
+      }
+    ]
+  },
+  "empathy_gap": {
+    "description": "Customer support response metrics",
+    "total_records": 2,
+    "data": [
+      {
+        "Brand": "BPCL",
+        "Response_Rate_%": 95.0,
+        "Median_Time_Mins": 0.0,
+        "Support_Type": "🤖 Automated/Bot",
+        "Total_Reviews": 10000,
+        "Replied_Reviews": 9495
+      },
+      {
+        "Brand": "IOCL",
+        "Response_Rate_%": 11.0,
+        "Median_Time_Mins": 0.0,
+        "Support_Type": "🤖 Automated/Bot",
+        "Total_Reviews": 10000,
+        "Replied_Reviews": 1105
+      }
+    ]
+  },
+  "executive_summary": {
+    "feature_war_insights": "BPCL vs IOCL across 4 key aspects",
+    "persona_insights": "6 user segments identified",
+    "empathy_gap_insights": "Support performance from 2 datasets",
+    "data_source": "Google Play Store reviews (fresh 10k balanced dataset)"
+  }
+}

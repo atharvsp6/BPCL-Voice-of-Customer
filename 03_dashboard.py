@@ -590,6 +590,73 @@ def search_reviews(df, query):
     mask = df['content'].str.lower().str.contains(query_lower, na=False)
     return df[mask]
 
+@st.cache_data
+def analyze_aspects(text):
+    """
+    Analyze sentiment for specific aspects in review text.
+    Returns dict with aspect sentiment scores.
+    """
+    if pd.isna(text):
+        return {}
+    
+    text_lower = str(text).lower()
+    
+    # Define aspect keywords and their related terms
+    aspects = {
+        'Price': {
+            'keywords': ['price', 'expensive', 'cheap', 'cost', 'rate', 'charges', 'overpriced', 'discount', 'refund'],
+            'positive': ['affordable', 'reasonable', 'fair', 'cheap', 'good price', 'value'],
+            'negative': ['expensive', 'costly', 'overpriced', 'high price']
+        },
+        'Service': {
+            'keywords': ['service', 'staff', 'attendant', 'customer service', 'support', 'help', 'response', 'assist'],
+            'positive': ['helpful', 'friendly', 'quick', 'efficient', 'good service', 'professional'],
+            'negative': ['rude', 'slow', 'poor service', 'unhelpful', 'bad staff', 'ignorant']
+        },
+        'App/Interface': {
+            'keywords': ['app', 'interface', 'ui', 'ux', 'design', 'button', 'feature', 'bug', 'crash', 'loading', 'freeze'],
+            'positive': ['smooth', 'easy', 'fast', 'intuitive', 'user-friendly', 'clean'],
+            'negative': ['crashes', 'slow', 'buggy', 'confusing', 'broken', 'laggy', 'freezes']
+        },
+        'Fuel Quality': {
+            'keywords': ['fuel', 'petrol', 'diesel', 'quality', 'purity', 'contamination', 'water', 'adulterated'],
+            'positive': ['good quality', 'pure', 'clean', 'premium'],
+            'negative': ['poor quality', 'contaminated', 'water', 'adulterated', 'fake', 'cheated']
+        },
+        'Location/Parking': {
+            'keywords': ['location', 'parking', 'place', 'pump', 'station', 'access', 'crowded', 'distance'],
+            'positive': ['convenient', 'accessible', 'easy access', 'good location', 'spacious'],
+            'negative': ['inconvenient', 'poor location', 'parking issue', 'crowded', 'hard to find']
+        }
+    }
+    
+    aspect_scores = {}
+    
+    for aspect, keywords_dict in aspects.items():
+        if any(kw in text_lower for kw in keywords_dict['keywords']):
+            sentiment_score = 0.5  # neutral default
+            
+            # Check for positive keywords
+            positive_count = sum(1 for kw in keywords_dict['positive'] if kw in text_lower)
+            negative_count = sum(1 for kw in keywords_dict['negative'] if kw in text_lower)
+            
+            if positive_count > negative_count:
+                sentiment_score = 0.7 + (positive_count * 0.05)
+            elif negative_count > positive_count:
+                sentiment_score = 0.3 - (negative_count * 0.05)
+            else:
+                sentiment_score = 0.5
+            
+            aspect_scores[aspect] = max(0.0, min(1.0, sentiment_score))
+    
+    return aspect_scores
+
+def enrich_dataframe_with_aspects(df):
+    """Add aspect-based sentiment scores to dataframe"""
+    if 'aspect_sentiments' not in df.columns:
+        df['aspect_sentiments'] = df['content'].apply(analyze_aspects)
+    return df
+
 def create_density_plot(df, column, title):
     """Create BPCL-style density plot with dark theme support"""
     colors = get_theme_colors()
@@ -1347,6 +1414,217 @@ def page_sentiment(df, topic_keywords):
         st.plotly_chart(fig_comp, use_container_width=True)
 
 # =============================================================================
+# PAGE: ASPECT ANALYSIS
+# =============================================================================
+@st.cache_data
+def load_aspect_data():
+    """Load the aspect analysis CSV with caching"""
+    try:
+        df = pd.read_csv('HelloBPCL_Detailed_Analysis.csv')
+        # Parse date column
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        return df
+    except FileNotFoundError:
+        st.error("⚠️ File 'HelloBPCL_Detailed_Analysis.csv' not found.")
+        return None
+
+def page_aspects(topic_keywords):
+    """Aspect Analysis page with detailed insights and drill-down"""
+    st.markdown("# 🎯 Aspect Analysis")
+    st.markdown("---")
+    
+    # Load data
+    df = load_aspect_data()
+    if df is None:
+        st.stop()
+    
+    # Sidebar filter for sentiment
+    st.sidebar.markdown("## 📋 Aspect Filters")
+    sentiments = sorted(df['Sentiment'].unique())
+    selected_sentiment = st.sidebar.selectbox(
+        "Sentiment", 
+        sentiments,
+        index=sentiments.index('Negative') if 'Negative' in sentiments else 0,
+        key="aspect_sentiment_filter"
+    )
+    
+    # Filter by sentiment
+    filtered_df = df[df['Sentiment'] == selected_sentiment].copy()
+    
+    # =========================================================================
+    # KPIs SECTION
+    # =========================================================================
+    colors = get_theme_colors()
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "📊 Total Reviews",
+            f"{len(filtered_df):,}",
+            delta=f"From {len(df):,} total"
+        )
+    
+    with col2:
+        unique_aspects = filtered_df['Aspect'].nunique()
+        st.metric(
+            "🏷️ Unique Aspects",
+            f"{unique_aspects}",
+            delta=f"{unique_aspects} complaint types"
+        )
+    
+    with col3:
+        if len(filtered_df) > 0:
+            top_aspect = filtered_df['Aspect'].value_counts().index[0]
+            top_count = filtered_df['Aspect'].value_counts().values[0]
+            st.metric(
+                "🔴 #1 Aspect",
+                f"{top_aspect}",
+                delta=f"{top_count} mentions ({top_count/len(filtered_df)*100:.1f}%)"
+            )
+        else:
+            st.metric("#1 Aspect", "N/A", delta="No data")
+    
+    st.markdown("---")
+    
+    # =========================================================================
+    # TOP ASPECTS CHART
+    # =========================================================================
+    st.markdown(f"### 📈 Top 15 Most Frequent Aspects ({selected_sentiment})")
+    
+    if len(filtered_df) > 0:
+        # Count aspects
+        aspect_counts = filtered_df['Aspect'].value_counts().head(15)
+        
+        # Create horizontal bar chart
+        fig = go.Figure()
+        
+        fig.add_trace(
+            go.Bar(
+                y=aspect_counts.index,
+                x=aspect_counts.values,
+                orientation='h',
+                marker=dict(
+                    color=aspect_counts.values,
+                    colorscale='Reds' if selected_sentiment == 'Negative' else 'Blues',
+                    showscale=False,
+                    line=dict(color='rgba(0,0,0,0)')
+                ),
+                text=aspect_counts.values,
+                textposition='auto',
+                hovertemplate='<b>%{y}</b><br>Mentions: %{x}<extra></extra>',
+                name=selected_sentiment
+            )
+        )
+        
+        fig.update_layout(
+            title=f"Top Complained Aspects - {selected_sentiment} Sentiment",
+            xaxis_title="Number of Mentions",
+            yaxis_title="Aspect",
+            height=500,
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor=colors['plot_bg'],
+            xaxis_gridcolor=colors['grid'],
+            xaxis_title_font_color=colors['text'],
+            yaxis_title_font_color=colors['text'],
+            xaxis_tickfont_color=colors['text'],
+            yaxis_tickfont_color=colors['text'],
+            font_color=colors['text'],
+            margin=dict(l=200)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No data available for the selected sentiment.")
+    
+    st.markdown("---")
+    
+    # =========================================================================
+    # DRILL-DOWN SECTION
+    # =========================================================================
+    st.markdown("### 🔎 Drill-Down: View Reviews by Aspect")
+    
+    if len(filtered_df) > 0:
+        # Dropdown to select aspect
+        available_aspects = sorted(filtered_df['Aspect'].unique())
+        selected_aspect = st.selectbox(
+            "Select Aspect to View Details:",
+            available_aspects,
+            key="aspect_drilldown"
+        )
+        
+        # Filter for selected aspect
+        aspect_reviews = filtered_df[filtered_df['Aspect'] == selected_aspect].copy()
+        
+        # Display stats for selected aspect
+        aspect_col1, aspect_col2, aspect_col3, aspect_col4 = st.columns(4)
+        
+        with aspect_col1:
+            st.metric("Reviews", len(aspect_reviews))
+        
+        with aspect_col2:
+            avg_rating = aspect_reviews['Rating'].mean()
+            st.metric("Avg Rating", f"{avg_rating:.1f}★", delta="out of 5")
+        
+        with aspect_col3:
+            if len(aspect_reviews) > 0:
+                positive_pct = (aspect_reviews['Rating'] >= 4).sum() / len(aspect_reviews) * 100
+                st.metric("Positive", f"{positive_pct:.0f}%", delta="(4-5 stars)")
+        
+        with aspect_col4:
+            if len(aspect_reviews) > 0:
+                negative_pct = (aspect_reviews['Rating'] <= 2).sum() / len(aspect_reviews) * 100
+                st.metric("Negative", f"{negative_pct:.0f}%", delta="(1-2 stars)")
+        
+        st.markdown("---")
+        
+        # Display reviews table
+        st.markdown(f"#### Review Texts for Aspect: **{selected_aspect}**")
+        
+        display_columns = ['Date', 'Rating', 'Review_Text', 'App_Version', 'Sentiment']
+        available_columns = [col for col in display_columns if col in aspect_reviews.columns]
+        
+        # Sort by date descending
+        if 'Date' in aspect_reviews.columns:
+            aspect_reviews_sorted = aspect_reviews.sort_values('Date', ascending=False)
+        else:
+            aspect_reviews_sorted = aspect_reviews
+        
+        # Display as expandable cards
+        for idx, (_, row) in enumerate(aspect_reviews_sorted.iterrows()):
+            rating = int(row['Rating']) if pd.notna(row['Rating']) else 'N/A'
+            sentiment = row.get('Sentiment', 'N/A')
+            sentiment_emoji = {'Negative': '🔴', 'Neutral': '🟡', 'Positive': '🟢'}.get(sentiment, '⚪')
+            date_str = str(row.get('Date', 'N/A')).split(' ')[0]
+            
+            with st.expander(f"{sentiment_emoji} ⭐ {rating} | {date_str}", expanded=(idx == 0)):
+                st.write(row.get('Review_Text', 'No text'))
+                
+                exp_col1, exp_col2, exp_col3, exp_col4 = st.columns(4)
+                with exp_col1:
+                    st.caption(f"**Date:** {date_str}")
+                with exp_col2:
+                    st.caption(f"**Rating:** {rating}★")
+                with exp_col3:
+                    st.caption(f"**Version:** {row.get('App_Version', 'N/A')}")
+                with exp_col4:
+                    st.caption(f"**Sentiment:** {sentiment}")
+        
+        # Option to download filtered data
+        st.markdown("---")
+        csv_buffer = aspect_reviews_sorted[available_columns].to_csv(index=False)
+        st.download_button(
+            label=f"📥 Download {selected_aspect} Reviews ({len(aspect_reviews)} rows)",
+            data=csv_buffer,
+            file_name=f"aspect_{selected_aspect.replace(' ', '_')}_reviews.csv",
+            mime="text/csv"
+        )
+    else:
+        st.warning("No data available for the selected sentiment.")
+
+# =============================================================================
 # PAGE: DATA EXPLORER
 # =============================================================================
 def page_explorer(df, topic_keywords):
@@ -1430,6 +1708,221 @@ def page_explorer(df, topic_keywords):
     st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True)
 
 # =============================================================================
+# COMPETITIVE BENCHMARKING MODULE
+# =============================================================================
+@st.cache_data
+def load_competitive_data():
+    """Load competitive benchmarking data from CSV"""
+    try:
+        df = pd.read_csv('competitive_reviews_raw.csv')
+        df['at'] = pd.to_datetime(df['at'], errors='coerce')
+        return df
+    except FileNotFoundError:
+        return None
+
+
+def page_market_battleground():
+    """Tab 2: Market Battleground - High Level Competitive Overview"""
+    colors = get_theme_colors()
+    
+    # Load competitive data
+    comp_data = load_competitive_data()
+    
+    if comp_data is None:
+        st.warning("⚠️ Competitive data not found. Run the benchmarking notebook first.")
+        return
+    
+    st.markdown('<h1 class="main-header">⚔️ Market Battleground</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">BPCL vs Competitors: Head-to-Head Analysis</p>', unsafe_allow_html=True)
+    
+    # Filter to last 12 months
+    comp_data['at'] = pd.to_datetime(comp_data['at'], errors='coerce')
+    cutoff_date = pd.Timestamp.now() - pd.DateOffset(months=12)
+    comp_filtered = comp_data[comp_data['at'] >= cutoff_date].copy()
+    
+    # =========================================================================
+    # ROW 1: KEY METRICS
+    # =========================================================================
+    st.markdown("### 📊 Key Metrics")
+    
+    # Calculate NSS for each brand
+    def calc_nss_per_brand(df):
+        nss_dict = {}
+        for brand in df['brand'].unique():
+            brand_data = df[df['brand'] == brand]
+            promoters = len(brand_data[brand_data['score'] == 5])
+            detractors = len(brand_data[brand_data['score'] <= 3])
+            total = len(brand_data)
+            nss = ((promoters - detractors) / total * 100) if total > 0 else 0
+            nss_dict[brand] = nss
+        return nss_dict
+    
+    nss_scores = calc_nss_per_brand(comp_filtered)
+    
+    # Calculate gaps
+    bpcl_nss = nss_scores.get('BPCL', 0)
+    indianoil_nss = nss_scores.get('IndianOil', 0)
+    hpcl_nss = nss_scores.get('HPCL', 0)
+    shell_nss = nss_scores.get('Shell', 0)
+    market_avg = np.mean([indianoil_nss, hpcl_nss, shell_nss])
+    
+    gap_indianoil = bpcl_nss - indianoil_nss
+    gap_shell = bpcl_nss - shell_nss
+    gap_market = bpcl_nss - market_avg
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "🎯 BPCL NSS",
+            f"{bpcl_nss:.2f}",
+            f"{bpcl_nss:.1f}%",
+            delta_color="normal"
+        )
+    
+    with col2:
+        st.metric(
+            "🆚 Gap vs IndianOil",
+            f"{gap_indianoil:.2f}",
+            f"{gap_indianoil:+.1f}",
+            delta_color="normal"
+        )
+    
+    with col3:
+        st.metric(
+            "🆚 Gap vs Shell",
+            f"{gap_shell:.2f}",
+            f"{gap_shell:+.1f}",
+            delta_color="normal"
+        )
+    
+    with col4:
+        st.metric(
+            "📈 vs Market Avg",
+            f"{gap_market:.2f}",
+            f"{gap_market:+.1f}",
+            delta_color="normal"
+        )
+    
+    st.markdown("---")
+    
+    # =========================================================================
+    # ROW 2: PAIN POINT PARITY & SHARE OF VOICE
+    # =========================================================================
+    st.markdown("### 📉 Competitive Landscape")
+    
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        st.markdown("#### 🔥 Pain Point Parity (Complaint Heatmap)")
+        st.info("💡 Analyze which brands struggle with specific issues (Login, Payment, UI, Support)")
+        
+        # Create complaint matrix placeholder
+        complaint_topics = ['Login', 'Payment', 'UI', 'Support']
+        brands = comp_filtered['brand'].unique()
+        
+        # Simple complaint count matrix
+        complaint_matrix = []
+        for brand in brands:
+            brand_data = comp_filtered[(comp_filtered['brand'] == brand) & (comp_filtered['score'] <= 2)]
+            row = {'Brand': brand}
+            for topic in complaint_topics:
+                keywords = {
+                    'Login': ['login', 'otp', 'verify', 'sms'],
+                    'Payment': ['payment', 'fail', 'money', 'deduct'],
+                    'UI': ['slow', 'crash', 'hang', 'freeze'],
+                    'Support': ['support', 'help', 'ticket', 'contact']
+                }
+                count = 0
+                if len(brand_data) > 0:
+                    for keyword in keywords.get(topic, []):
+                        count += brand_data['content'].fillna('').str.lower().str.contains(keyword).sum()
+                rate = (count / len(comp_filtered[comp_filtered['brand'] == brand]) * 100) if len(comp_filtered[comp_filtered['brand'] == brand]) > 0 else 0
+                row[topic] = rate
+            complaint_matrix.append(row)
+        
+        df_complaints = pd.DataFrame(complaint_matrix).set_index('Brand')
+        
+        fig_heatmap = px.imshow(
+            df_complaints,
+            labels=dict(x="Issue Category", y="Brand", color="Problem Rate (%)"),
+            title="Complaint Heatmap by Brand",
+            color_continuous_scale="YlOrRd",
+            text_auto='.1f',
+            height=400
+        )
+        fig_heatmap.update_layout(
+            plot_bgcolor=colors['plot_bg'],
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=colors['text'])
+        )
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    with col_right:
+        st.markdown("#### 📢 Share of Voice (Review Velocity)")
+        st.info("💡 Track engagement: Higher volume = stronger market presence")
+        
+        # Aggregate reviews by brand and date
+        reviews_by_date = comp_filtered.groupby([pd.Grouper(key='at', freq='W'), 'brand']).size().reset_index(name='count')
+        
+        fig_sov = px.line(
+            reviews_by_date,
+            x='at',
+            y='count',
+            color='brand',
+            title="Weekly Review Volume (Share of Voice)",
+            labels={'at': 'Date', 'count': 'Reviews per Week', 'brand': 'Brand'},
+            height=400
+        )
+        fig_sov.update_layout(
+            plot_bgcolor=colors['plot_bg'],
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=colors['text']),
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_sov, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # =========================================================================
+    # ROW 3: BLUE OCEAN OPPORTUNITIES
+    # =========================================================================
+    st.markdown("### 🌊 Blue Ocean: Competitor Strengths")
+    st.info("💡 Features competitors are praised for that BPCL can adopt or improve")
+    
+    # Define sample blue ocean features (would come from analysis function)
+    blue_ocean_features = {
+        'IndianOil': ['seamless integration', 'fast transactions', 'battery optimization'],
+        'HPCL': ['user interface', 'real-time updates', 'quick setup'],
+        'Shell': ['premium experience', 'loyalty rewards', 'global standards']
+    }
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.success(f"**IndianOil** 🏆\n\n" + "\n".join([f"✓ {f}" for f in blue_ocean_features['IndianOil']]))
+    
+    with col2:
+        st.success(f"**HPCL** 🏆\n\n" + "\n".join([f"✓ {f}" for f in blue_ocean_features['HPCL']]))
+    
+    with col3:
+        st.success(f"**Shell** 🏆\n\n" + "\n".join([f"✓ {f}" for f in blue_ocean_features['Shell']]))
+
+
+def page_strategic_deep_dive():
+    """Tab 3: Strategic Deep Dive - Advanced Competitive Analysis with Live Data"""
+    from deep_dive_renderer import render_deep_dive_tab
+    
+    st.markdown('<h1 class="main-header">🚀 Strategic Deep Dive</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Head-to-Head Competitive Intelligence: BPCL vs IndianOil</p>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Render the full deep dive analysis
+    render_deep_dive_tab()
+
+
+# =============================================================================
 # MAIN APP
 # =============================================================================
 def main():
@@ -1441,23 +1934,48 @@ def main():
     if df is None:
         st.stop()
     
-    # Navigation
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 📄 Pages")
+    # Create main tab structure
+    tab1, tab2, tab3 = st.tabs([
+        "📊 Internal Pulse",
+        "⚔️ Market Battleground",
+        "🚀 Strategic Deep Dive"
+    ])
     
-    page = st.sidebar.radio("Select Page:", 
-                           ["📊 Overview", "🏷️ Topics", "😊 Sentiment", "🔍 Explorer"],
-                           label_visibility="collapsed")
+    # =========================================================================
+    # TAB 1: INTERNAL PULSE (Original Dashboard)
+    # =========================================================================
+    with tab1:
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("## 📄 Internal Analysis")
+        
+        page = st.sidebar.radio("Select Page:", 
+                               ["📊 Overview", "🏷️ Topics", "😊 Sentiment", "🎯 Aspects", "🔍 Explorer"],
+                               label_visibility="collapsed",
+                               key="internal_pulse_nav")
+        
+        # Route to page
+        if page == "📊 Overview":
+            page_overview(df, topic_keywords)
+        elif page == "🏷️ Topics":
+            page_topics(df, topic_keywords)
+        elif page == "😊 Sentiment":
+            page_sentiment(df, topic_keywords)
+        elif page == "🎯 Aspects":
+            page_aspects(topic_keywords)
+        elif page == "🔍 Explorer":
+            page_explorer(df, topic_keywords)
     
-    # Route to page
-    if page == "📊 Overview":
-        page_overview(df, topic_keywords)
-    elif page == "🏷️ Topics":
-        page_topics(df, topic_keywords)
-    elif page == "😊 Sentiment":
-        page_sentiment(df, topic_keywords)
-    elif page == "🔍 Explorer":
-        page_explorer(df, topic_keywords)
+    # =========================================================================
+    # TAB 2: MARKET BATTLEGROUND (Competitive Module)
+    # =========================================================================
+    with tab2:
+        page_market_battleground()
+    
+    # =========================================================================
+    # TAB 3: STRATEGIC DEEP DIVE (Advanced Analytics)
+    # =========================================================================
+    with tab3:
+        page_strategic_deep_dive()
     
     # Footer
     st.markdown("---")
