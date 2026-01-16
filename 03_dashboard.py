@@ -796,6 +796,124 @@ def create_sentiment_heatmap(df, topic_keywords):
     
     return None
 
+
+def create_topic_trend(df):
+    """Create line chart showing topic volume over time."""
+    colors = get_theme_colors()
+    if 'Topic_Label' not in df.columns or 'month_year' not in df.columns:
+        return None
+
+    trend_df = df.dropna(subset=['Topic_Label', 'month_year']).copy()
+    if trend_df.empty:
+        return None
+
+    # Ensure month ordering for x-axis
+    trend_df['month_year_dt'] = pd.to_datetime(trend_df['month_year'], errors='coerce')
+    trend_df = trend_df.dropna(subset=['month_year_dt'])
+    if trend_df.empty:
+        return None
+
+    grouped = (
+        trend_df.groupby(['month_year_dt', 'Topic_Label'])
+        .size()
+        .reset_index(name='count')
+        .sort_values('month_year_dt')
+    )
+
+    fig = px.line(
+        grouped,
+        x='month_year_dt',
+        y='count',
+        color='Topic_Label',
+        markers=True,
+        title='Temporal Topic Evolution',
+    )
+
+    fig.update_layout(
+        height=360,
+        plot_bgcolor=colors['plot_bg'],
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            title=dict(text='Month', font=dict(color=colors['text'], size=13)),
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            gridcolor=colors.get('grid_major', colors['grid']),
+            tickformat='%Y-%m'
+        ),
+        yaxis=dict(
+            title=dict(text='Review Count', font=dict(color=colors['text'], size=13)),
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            gridcolor=colors['grid']
+        ),
+        title=dict(
+            font=dict(color=colors.get('text_bright', colors['text']), size=16),
+            x=0.05
+        ),
+        font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+    )
+
+    return fig
+
+
+def create_topic_version_heatmap(df):
+    """Create heatmap of topic distribution across app versions."""
+    colors = get_theme_colors()
+    if 'Topic_Label' not in df.columns or 'appVersion' not in df.columns:
+        return None
+
+    base_df = df.dropna(subset=['Topic_Label', 'appVersion']).copy()
+    if base_df.empty:
+        return None
+
+    # Limit to top versions by volume for readability
+    top_versions = base_df['appVersion'].value_counts().head(10).index
+    base_df = base_df[base_df['appVersion'].isin(top_versions)]
+    if base_df.empty:
+        return None
+
+    heatmap_data = pd.crosstab(base_df['appVersion'], base_df['Topic_Label'])
+
+    fig = px.imshow(
+        heatmap_data.values,
+        x=heatmap_data.columns.tolist(),
+        y=heatmap_data.index.tolist(),
+        color_continuous_scale='Blues',
+        labels=dict(color='Count'),
+        title='Topic vs App Version (Top 10 versions)'
+    )
+
+    fig.update_traces(
+        text=heatmap_data.values,
+        texttemplate='%{text}',
+        textfont=dict(size=11, color=colors.get('text_bright', colors['text']))
+    )
+
+    fig.update_layout(
+        height=380,
+        plot_bgcolor=colors['plot_bg'],
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        yaxis=dict(
+            tickfont=dict(color=colors['secondary_text'], size=11),
+            title=dict(font=dict(color=colors['text'], size=13))
+        ),
+        title=dict(
+            font=dict(color=colors.get('text_bright', colors['text']), size=16),
+            x=0.05
+        ),
+        font=dict(color=colors['text'], family='Inter, system-ui, sans-serif'),
+        coloraxis_colorbar=dict(
+            tickfont=dict(color=colors['secondary_text'], size=10),
+            title=dict(font=dict(color=colors['text'], size=12))
+        ),
+        margin=dict(l=50, r=30, t=60, b=50)
+    )
+
+    return fig
+
 def create_gauge_chart(value, title="Sentiment Health"):
     """Create BPCL-style gauge chart with dark theme support"""
     colors = get_theme_colors()
@@ -1293,6 +1411,20 @@ def page_topics(df, topic_keywords):
         fig_heatmap = create_sentiment_heatmap(filtered_df, topic_keywords)
         if fig_heatmap:
             st.plotly_chart(fig_heatmap, use_container_width=True)
+
+    st.markdown("### ⏳ Temporal Topic Evolution")
+    fig_topic_trend = create_topic_trend(filtered_df)
+    if fig_topic_trend:
+        st.plotly_chart(fig_topic_trend, use_container_width=True)
+    else:
+        st.info("Add dates (month_year) and topics to view trend over time.")
+
+    st.markdown("### 🧭 Topic-Version Correlation")
+    fig_topic_version = create_topic_version_heatmap(filtered_df)
+    if fig_topic_version:
+        st.plotly_chart(fig_topic_version, use_container_width=True)
+    else:
+        st.info("Add appVersion and topic labels to explore version-topic signals.")
     
     st.markdown("---")
     
