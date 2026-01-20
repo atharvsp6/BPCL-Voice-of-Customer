@@ -48,9 +48,7 @@ api_keys.txt
 .streamlit/secrets.toml
 
 # Jupyter notebooks (keep local for development)
-.ipynb_checkpoints/
-*.ipynb
-*.log
+
 
 # Development/scraper scripts (not needed for dashboard)
 harvester_*.py
@@ -58,7 +56,7 @@ scraper.py
 generate_synthetic_reviews.py
 
 # Large raw data files (keep local)
-hello_bpcl_reviews_100k.csv
+
 raw_reviews.csv
 reviews_*.csv
 

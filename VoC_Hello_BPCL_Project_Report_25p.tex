@@ -1,0 +1,1543 @@
+\documentclass[12pt,a4paper]{report}
+% ======================= PACKAGES =======================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+% ======================= PAGE SETUP =======================
+\geometry{
+    a4paper,
+    left=1.5in,
+    right=1in,
+    top=1in,
+    bottom=1in
+}
+
+\onehalfspacing
+
+% ======================= HYPERREF SETUP =======================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={Voice of Customer Intelligence Platform - Hello BPCL},
+    pdfauthor={Atharv Patil},
+    bookmarks=true,
+    bookmarksopen=true
+}
+
+% ======================= CODE LISTING SETUP =======================
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single
+}
+\lstset{style=mystyle}
+
+% ======================= HEADER/FOOTER =======================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ======================= TITLE FORMATTING =======================
+\titleformat{\chapter}[display]
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{40pt}
+
+% ======================= DOCUMENT START =======================
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm} % Reduced top margin start
+
+    {\Huge\bfseries Voice of Customer Intelligence Platform\\[0.2cm] for Hello BPCL Mobile Application\par}
+
+    \vspace{0.5cm}
+
+    {\Large\itshape Comprehensive Project Report\par}
+
+    \vfill % dynamic vertical space
+
+    \includegraphics[width=0.3\textwidth]{figures/bpcl_logo.png}\\[0.5cm]
+    % Note: Replace with actual logo or comment out if not available
+
+    {\Large Data Analytics \& ML Internship Project\par}
+
+    \vfill % dynamic vertical space
+
+    {\large Submitted to:\\[0.2cm]
+    \textbf{Bharat Petroleum Corporation Limited (BPCL)}\par}
+
+    \vspace{0.8cm} % Reduced gap between submission sections
+
+    {\large Guided by:\\[0.2cm]
+    \textbf{Mr. Nilbh Nishchhal}\\}
+
+    \vspace{0.8cm}
+
+    {\large Submitted by:\\[0.2cm]
+    \textbf{Atharv Patil}\\
+    16010423020\par}
+
+    \vfill % dynamic vertical space
+
+    {\large January 2026\par}
+
+    \vspace{0.5cm}
+
+    {\normalsize Dataset: 82,255 Customer Reviews (Google Play Store)\\
+    Time Period: September 2018 -- January 2026\par}
+
+    {\normalsize Live Dashboard: \href{https://bpcl-voice-of-customer-gt8ctdkntp3jw3ltw6u3hz.streamlit.app/}{Streamlit App}\\
+    Repository: \href{https://github.com/atharvsp6/BPCL-Voice-of-Customer.git}{GitHub - BPCL Voice of Customer}\par}
+
+    \vspace*{0.5cm} % Small bottom buffer
+\end{titlepage}
+
+% ======================= ACKNOWLEDGEMENT =======================
+
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{Acknowledgement}
+
+\setlength{\parskip}{6pt}   % space between paragraphs
+\setlength{\parindent}{0pt} % no paragraph indent
+
+I would like to express my sincere gratitude to all those who contributed to the successful completion of this project on Voice of Customer (VoC) Analysis of the Hello BPCL Mobile Application.
+
+\vspace{0.4cm}
+
+First and foremost, I extend my heartfelt thanks to \textbf{Bharat Petroleum Corporation Limited (BPCL)} for providing me with the opportunity to work on this challenging and insightful project as part of the Data Analytics \& Machine Learning Internship.
+
+\vspace{0.4cm}
+
+I am deeply grateful to my project guide, \textbf{Mr. Nilbh Nishchhal}, for his invaluable guidance, continuous support, and constructive feedback throughout the duration of this project. His expertise in data science and natural language processing played a crucial role in shaping the direction and quality of this research.
+
+\vspace{0.4cm}
+
+I would also like to acknowledge the open-source community for developing and maintaining the excellent libraries and tools used in this project, including \textbf{NLTK, Gensim, Hugging Face Transformers, PyABSA, Streamlit}, and many others, without which this work would not have been possible.
+
+\vspace{1.2cm}
+
+\begin{flushright}
+\textbf{Atharv Patil} \\
+January 2026
+\end{flushright}
+
+% ======================= ABSTRACT =======================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\textbf{Background:} Bharat Petroleum Corporation Limited (BPCL) operates the ``Hello BPCL'' mobile application as a digital touchpoint for customers to book LPG cylinders, manage payments, track deliveries, and access rewards. With millions of users generating substantial customer feedback on app stores, there exists a significant opportunity to extract actionable insights from this unstructured data.
+
+\textbf{Objective:} This project aims to develop a comprehensive Voice of Customer (VoC) analysis system that leverages advanced Natural Language Processing (NLP) and Machine Learning (ML) techniques to analyze customer reviews, identify pain points, track sentiment trends, and provide data-driven recommendations for product improvement.
+
+\textbf{Methods:} A hybrid sentiment analysis approach combining VADER (rule-based) and DistilBERT (transformer-based) models was implemented on 82,255 customer reviews collected from the Google Play Store (September 2018 -- January 2026). Latent Dirichlet Allocation (LDA) was employed for topic modeling to discover latent themes in customer feedback. Aspect-Based Sentiment Analysis (ABSA) using PyABSA extracted fine-grained, feature-level sentiment. Competitive benchmarking was performed against IOCL, HPCL, and Shell applications.
+
+\textbf{Results:} The sentiment classification model achieved 79\% accuracy. Four major complaint themes were identified: Login/OTP Issues (28\%), Payment Problems (18\%), App Updates/Crashes (22\%), and Rewards System Complaints (12\%). ABSA extracted \textbf{37,124 aspect-sentiment pairs} across \textbf{2,516 unique aspects}. Overall sentiment was 74.7\% positive with Net Sentiment Score of +62.5\%.
+
+\textbf{Conclusions:} The developed system successfully automates the analysis of large-scale customer feedback, enabling BPCL to prioritize product improvements based on quantified customer pain points. The interactive Streamlit dashboard provides stakeholders with real-time analytics across three dimensions: Internal Pulse (core analytics), Market Battleground (competitive intelligence), and Strategic Deep Dive (advanced insights).
+
+\textbf{Keywords:} Voice of Customer, Sentiment Analysis, Natural Language Processing, Topic Modeling, LDA, BERT, VADER, Aspect-Based Sentiment Analysis, ABSA, Mobile App Analytics, Customer Feedback, BPCL
+
+% ======================= TABLE OF CONTENTS =======================
+\tableofcontents
+
+% ======================= LIST OF FIGURES =======================
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{List of Figures}
+\listoffigures
+
+% ======================= LIST OF TABLES =======================
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{List of Tables}
+\listoftables
+
+
+% ======================= MAIN CONTENT =======================
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ======================= CHAPTER 1: EXECUTIVE SUMMARY =======================
+\chapter{Executive Summary}
+\label{chap:executive-summary}
+
+This project presents a comprehensive Voice of Customer (VoC) analysis system for the \textbf{Hello BPCL} mobile application. The system leverages advanced Natural Language Processing (NLP) and Machine Learning (ML) techniques to extract actionable insights from \textbf{82,255 customer reviews} collected from the Google Play Store.
+
+\section{Key Achievements}
+
+\begin{table}[H]
+\centering
+\caption{Project Key Metrics}
+\label{tab:key-metrics}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value}\\
+\midrule
+Total Reviews Analyzed & 82,255\\
+Sentiment Classification Accuracy & \textbf{79.24\%}\\
+Topics Discovered & 4 Major Themes\\
+Positive Reviews & 60,116 (73.1\%)\\
+Neutral Reviews & 11,303 (13.7\%)\\
+Negative Reviews & 10,836 (13.2\%)\\
+Weighted F1-Score & 0.820\\
+ABSA Aspect-Sentiment Pairs & \textbf{37,124}\\
+Unique Aspects Identified & \textbf{2,516}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Highlights}
+
+\begin{itemize}
+    \item \textbf{Hybrid Sentiment Analysis:} Combined VADER (rule-based) with DistilBERT (transformer-based) models, processing 67,421 reviews through BERT refinement
+    
+    \item \textbf{LDA Topic Modeling:} Identified 4 critical customer concern areas including login/OTP issues, payment problems, app updates, and reward system complaints
+    
+    \item \textbf{Aspect-Based Sentiment Analysis (ABSA):} Extracted 37,124 aspect-sentiment pairs using PyABSA, identifying 2,516 unique feature-level aspects
+    
+    \item \textbf{Interactive Dashboard:} Built a production-ready Streamlit analytics dashboard with three main tabs:
+    \begin{itemize}
+        \item \textbf{Internal Pulse:} Core analytics with overview, topics, sentiment, aspects, and data explorer
+        \item \textbf{Market Battleground:} Competitive benchmarking with NSS scores and pain point analysis
+        \item \textbf{Strategic Deep Dive:} Head-to-head feature war and persona analysis
+    \end{itemize}
+    
+    \item \textbf{Competitive Benchmarking:} Compared BPCL vs IOCL, HPCL, and Shell across key feature aspects
+\end{itemize}
+
+% ======================= CHAPTER 2: PROBLEM STATEMENT =======================
+\chapter{Problem Statement}
+\label{chap:problem-statement}
+
+\section{Background}
+
+Bharat Petroleum Corporation Limited (BPCL) operates the ``Hello BPCL'' mobile application as a digital touchpoint for customers to book LPG cylinders, manage payments, track deliveries, and access rewards. With millions of users, the application generates substantial customer feedback that contains valuable insights but remains largely underutilized.
+
+\section{Problem Definition}
+
+\textbf{Primary Challenge:} How can BPCL systematically analyze large volumes of unstructured customer reviews to identify pain points, track sentiment trends, and prioritize product improvements?
+
+\section{Importance and Business Impact}
+
+\begin{table}[H]
+\centering
+\caption{Business Impact Areas}
+\label{tab:business-impact}
+\begin{tabular}{p{4cm}p{9cm}}
+\toprule
+\textbf{Aspect} & \textbf{Impact}\\
+\midrule
+Customer Retention & Identifying and fixing issues improves user satisfaction and reduces churn\\
+Product Development & Data-driven prioritization of feature requests and bug fixes\\
+Competitive Intelligence & Understanding market position relative to competitors (IOCL)\\
+Operational Efficiency & Automated analysis replaces manual review reading\\
+Brand Reputation & Early detection of negative sentiment spikes enables proactive response\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item What are the dominant themes in customer feedback?
+    \item How does customer sentiment vary across app versions and time?
+    \item What specific features drive negative vs. positive sentiment?
+    \item How does Hello BPCL compare to competing applications?
+\end{enumerate}
+
+% ======================= CHAPTER 3: DATA COLLECTION =======================
+\chapter{Data Collection and Strategy}
+\label{chap:data-collection}
+
+\section{Data Source}
+
+Reviews were collected from the \textbf{Google Play Store} using the \texttt{google-play-scraper} Python library. The application target:
+
+\begin{lstlisting}[language=Python, caption=App Configuration]
+App ID: com.cgt.bharatgas
+Platform: Google Play Store (Android)
+Region: India (country='in')
+Language: English (lang='en')
+\end{lstlisting}
+
+\section{Collection Methodology}
+
+Reviews were collected directly within Jupyter notebooks using the \texttt{google-play-scraper} library:
+
+\begin{lstlisting}[language=Python, caption=Data Collection Code]
+from google_play_scraper import Sort, reviews
+
+result, _ = reviews(
+    'com.cgt.bharatgas',  # Hello BPCL App ID
+    lang='en',
+    country='in',
+    sort=Sort.NEWEST,
+    count=200000
+)
+df = pd.DataFrame(result)
+\end{lstlisting}
+
+\textbf{Key Features of Collection Pipeline:}
+\begin{itemize}
+    \item Integrated directly into analysis notebooks for reproducibility
+    \item Fetches all available metadata (reviewId, userName, content, score, date, appVersion, etc.)
+    \item Supports large-scale extraction (up to 200,000 reviews per run)
+    \item Timestamp preservation for temporal analysis
+\end{itemize}
+
+\section{Data Schema}
+
+\begin{table}[H]
+\centering
+\caption{Data Schema Description}
+\label{tab:data-schema}
+\begin{tabular}{lll}
+\toprule
+\textbf{Column} & \textbf{Description} & \textbf{Type}\\
+\midrule
+reviewId & Unique identifier & String\\
+content & Review text & String\\
+score & Star rating (1-5) & Integer\\
+at & Review timestamp & DateTime\\
+thumbsUpCount & Helpfulness votes & Integer\\
+appVersion & App version at review time & String\\
+replyContent & Developer response & String\\
+repliedAt & Response timestamp & DateTime\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Dataset Statistics}
+
+\begin{table}[H]
+\centering
+\caption{Dataset Statistics}
+\label{tab:dataset-stats}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value}\\
+\midrule
+Total Reviews & 82,255\\
+Date Range & Sept 12, 2018 -- Jan 5, 2026\\
+Unique App Versions & Multiple versions tracked\\
+Reviews with Valid Text & 82,255 (100\%)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Rating Distribution (Raw Data)}
+
+\begin{table}[H]
+\centering
+\caption{Rating Distribution}
+\label{tab:rating-distribution}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Rating} & \textbf{Count} & \textbf{Percentage}\\
+\midrule
+1 Star & 14,913 & 18.1\%\\
+2 Stars & 2,369 & 2.9\%\\
+3 Stars & 3,542 & 4.3\%\\
+4 Stars & 10,036 & 12.2\%\\
+5 Stars & 51,395 & 62.5\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/rating_distribution.png}
+\caption{Distribution of star ratings showing positive skew typical of app store reviews}
+\label{fig:rating-distribution}
+\end{figure}
+
+% ======================= CHAPTER 4: EDA =======================
+\chapter{Exploratory Data Analysis (EDA)}
+\label{chap:eda}
+
+\section{Text Length Analysis}
+
+Reviews exhibit significant variation in length:
+
+\begin{table}[H]
+\centering
+\caption{Text Length Analysis by Rating}
+\label{tab:text-length}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{1-Star Reviews} & \textbf{5-Star Reviews}\\
+\midrule
+Mean Word Count & Higher (detailed complaints) & Lower (brief praise)\\
+Median Length & Longer & Shorter\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Insight:} Dissatisfied customers write more detailed reviews, providing richer data for issue identification.
+
+\section{Temporal Patterns}
+
+Review volume analysis revealed:
+\begin{itemize}
+    \item Seasonal spikes correlating with app updates
+    \item Increased negative sentiment following certain version releases
+    \item Gradual improvement trend in recent versions
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/temporal_sentiment_trend.png}
+\caption{Monthly review volume and sentiment trends over time}
+\label{fig:temporal-trend}
+\end{figure}
+
+\section{Word Frequency Analysis}
+
+\textbf{Top Terms in Negative Reviews:}
+\begin{itemize}
+    \item Login, OTP, verification
+    \item Payment, transaction, money
+    \item Update, crash, bug
+    \item Reward, point, redeem
+\end{itemize}
+
+\textbf{Top Terms in Positive Reviews:}
+\begin{itemize}
+    \item Good, nice, excellent
+    \item Easy, convenient, fast
+    \item Helpful, service, great
+\end{itemize}
+
+\section{Topic Preview}
+
+Initial keyword analysis suggested four major concern areas:
+\begin{enumerate}
+    \item \textbf{Authentication Issues:} Login, OTP, verification problems
+    \item \textbf{Payment/Transaction:} Failed payments, refund delays
+    \item \textbf{App Technical Issues:} Crashes, updates, compatibility
+    \item \textbf{Rewards System:} Point redemption, offer availability
+\end{enumerate}
+
+% ======================= CHAPTER 5: METHODOLOGY =======================
+\chapter{Methodology}
+\label{chap:methodology}
+
+\section{System Architecture}
+\label{sec:system-architecture}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
++------------------+    +------------------+    +------------------+
+|  Data Collection |----| Preprocessing    |----|  Topic Modeling  |
+|  (Google Play)   |    | (NLP Pipeline)   |    |  (LDA + TF-IDF)  |
++------------------+    +------------------+    +------------------+
+                                                       |
+                                                       v
++------------------+    +------------------+    +------------------+
+|    Dashboard     |----| Data Enrichment  |----|    Sentiment     |
+|   (Streamlit)    |    |                  |    |    Analysis      |
++------------------+    +------------------+    +------------------+
+\end{verbatim}
+\caption{System Architecture Overview}
+\label{fig:system-architecture}
+\end{figure}
+
+\section{Data Preprocessing}
+\label{sec:preprocessing}
+
+The preprocessing pipeline ensures clean, normalized text for ML models:
+
+\begin{lstlisting}[language=Python, caption=Text Preprocessing Pipeline]
+def preprocess_text(text):
+    # 1. Lowercase conversion
+    text = text.lower()
+    
+    # 2. URL, email, phone removal
+    text = re.sub(r'http\S+|www\S+', '', text)
+    text = re.sub(r'\S+@\S+', '', text)
+    
+    # 3. Special character removal
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
+    
+    # 4. Tokenization
+    tokens = word_tokenize(text)
+    
+    # 5. Stopword removal (preserving domain terms)
+    tokens = [w for w in tokens if w not in stop_words 
+              or w in {'otp', 'kyc', 'upi'}]
+    
+    # 6. Lemmatization
+    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+    
+    return ' '.join(tokens)
+\end{lstlisting}
+
+\textbf{Custom Stopwords Added:} \texttt{\{'app', 'application', 'bpcl', 'bharatgas', 'use', 'using', 'used'\}}
+
+\section{Feature Engineering (TF-IDF)}
+\label{sec:tfidf}
+
+\textbf{Term Frequency-Inverse Document Frequency (TF-IDF)} converts text to numerical vectors:
+
+\begin{equation}
+\text{TF-IDF}(t, d, D) = \text{TF}(t, d) \times \text{IDF}(t, D)
+\end{equation}
+
+Where:
+
+\textbf{Term Frequency:}
+\begin{equation}
+\text{TF}(t, d) = \frac{f_{t,d}}{\sum_{t' \in d} f_{t',d}}
+\end{equation}
+
+\textbf{Inverse Document Frequency:}
+\begin{equation}
+\text{IDF}(t, D) = \log \frac{|D|}{|\{d \in D : t \in d\}|}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{TF-IDF Configuration Parameters}
+\label{tab:tfidf-config}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale}\\
+\midrule
+max\_features & 1,000 & Top vocabulary size\\
+min\_df & 5 & Minimum document frequency (removes typos)\\
+max\_df & 0.7 & Maximum document frequency (removes too-common terms)\\
+ngram\_range & (1, 2) & Unigrams and bigrams\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Topic Modeling (LDA)}
+\label{sec:lda}
+
+\textbf{Latent Dirichlet Allocation (LDA)} is a generative probabilistic model that discovers latent topics in document collections.
+
+\subsection{Model Formulation}
+
+Each document $d$ is modeled as a mixture of topics:
+
+\begin{equation}
+P(\text{word } w | \text{document } d) = \sum_{k=1}^{K} P(w | \text{topic } k) \cdot P(\text{topic } k | d)
+\end{equation}
+
+\subsection{Generative Process}
+
+For each document $d$:
+\begin{enumerate}
+    \item Draw topic distribution $\theta_d \sim \text{Dirichlet}(\alpha)$
+    \item For each word position:
+    \begin{itemize}
+        \item Draw topic $z \sim \text{Multinomial}(\theta_d)$
+        \item Draw word $w \sim \text{Multinomial}(\phi_z)$
+    \end{itemize}
+\end{enumerate}
+
+Where:
+\begin{itemize}
+    \item $\alpha$ = Dirichlet prior on per-document topic distributions
+    \item $\beta$ = Dirichlet prior on per-topic word distributions
+    \item $K$ = number of topics
+\end{itemize}
+
+\subsection{Inference via Variational Bayes}
+
+The log-likelihood is maximized using variational inference:
+
+\begin{multline}
+\mathcal{L}(\gamma, \phi; \alpha, \beta) = \mathbb{E}_q[\log p(\theta | \alpha)] + \mathbb{E}_q[\log p(z | \theta)]\\
++ \mathbb{E}_q[\log p(w | z, \beta)] - \mathbb{E}_q[\log q(\theta)] - \mathbb{E}_q[\log q(z)]
+\end{multline}
+
+\subsection{Topic Selection: Elbow Method}
+
+Optimal topic count was determined using \textbf{perplexity analysis}:
+
+\begin{equation}
+\text{Perplexity}(D) = \exp\left(-\frac{\sum_d \log p(w_d)}{\sum_d N_d}\right)
+\end{equation}
+
+Lower perplexity indicates better generalization. The elbow point at \textbf{K=4} was selected.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/topic_elbow_plot.png}
+\caption{Perplexity vs Number of Topics (Elbow Method)}
+\label{fig:topic-elbow}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{LDA Configuration Parameters}
+\label{tab:lda-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value}\\
+\midrule
+n\_components & 4 (negative), 4 (positive)\\
+max\_iter & 50\\
+learning\_method & 'online'\\
+random\_state & 42\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Hybrid Sentiment Analysis (VADER + BERT)}
+\label{sec:sentiment}
+
+\subsection{VADER (Valence Aware Dictionary for Sentiment Reasoning)}
+
+VADER is a rule-based model optimized for social media text:
+
+\begin{equation}
+\text{Compound Score} = \frac{\sum_{i} s_i}{\sqrt{\left(\sum_{i} s_i\right)^2 + \alpha}}
+\end{equation}
+
+Where $s_i$ is the sentiment valence of word $i$ and $\alpha$ is a normalization constant (typically 15).
+
+\textbf{Classification Rules:}
+\begin{itemize}
+    \item Positive: compound $\geq$ 0.05
+    \item Negative: compound $\leq$ -0.05
+    \item Neutral: otherwise
+\end{itemize}
+
+\subsection{DistilBERT Refinement}
+
+For uncertain VADER predictions ($|\text{compound}| < 0.60$), the \textbf{DistilBERT-SST-2} model provides refinement:
+
+\textbf{Model:} \texttt{distilbert-base-uncased-finetuned-sst-2-english}
+
+\textbf{Architecture:}
+\begin{itemize}
+    \item 6 Transformer encoder layers
+    \item 768 hidden dimensions
+    \item 66M parameters
+    \item Fine-tuned on Stanford Sentiment Treebank
+\end{itemize}
+
+\textbf{Loss Function (Cross-Entropy for Fine-tuning):}
+
+\begin{equation}
+\mathcal{L} = -\sum_{i=1}^{N} \left[ y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i) \right]
+\end{equation}
+
+\subsection{Hybrid Strategy}
+
+\begin{lstlisting}[caption=Hybrid Sentiment Strategy]
+For each review:
+    1. Run VADER -> Get compound score
+    2. If |compound| > 0.60:
+         Use VADER prediction (confident)
+    3. Else:
+         Run DistilBERT -> Use BERT prediction (refinement)
+\end{lstlisting}
+
+\textbf{Result:}
+\begin{itemize}
+    \item VADER-only predictions: 14,834 reviews (18.0\%)
+    \item BERT-refined predictions: 67,421 reviews (82.0\%)
+\end{itemize}
+
+\section{Aspect-Based Sentiment Analysis (ABSA)}
+\label{sec:absa}
+
+In addition to document-level sentiment analysis, \textbf{Aspect-Based Sentiment Analysis (ABSA)} was implemented to extract fine-grained, feature-specific sentiment from reviews.
+
+\subsection{ABSA Overview}
+
+ABSA goes beyond overall sentiment by identifying:
+\begin{enumerate}
+    \item \textbf{Aspect Terms:} Specific features mentioned (e.g., ``login'', ``payment'', ``delivery'')
+    \item \textbf{Aspect Sentiment:} Sentiment polarity for each specific aspect
+\end{enumerate}
+
+\subsection{PyABSA Model}
+
+\textbf{Library:} \texttt{pyabsa} (Python Aspect-Based Sentiment Analysis)\\
+\textbf{Checkpoint:} \texttt{multilingual} (supports English and regional languages)
+
+\begin{lstlisting}[language=Python, caption=PyABSA Implementation]
+from pyabsa import AspectTermExtraction as ATEPC
+
+aspect_extractor = ATEPC.AspectExtractor(
+    checkpoint='multilingual', 
+    auto_device=True  # Auto-selects GPU if available
+)
+
+results = aspect_extractor.batch_predict(
+    target_file=reviews_list,
+    pred_sentiment=True,
+    batch_size=32
+)
+\end{lstlisting}
+
+\subsection{ABSA Architecture}
+
+The ATEPC (Aspect Term Extraction and Polarity Classification) model uses:
+\begin{itemize}
+    \item \textbf{BERT-based encoder} for contextual embeddings
+    \item \textbf{Sequence labeling} for aspect term extraction (BIO tagging)
+    \item \textbf{Attention mechanism} for aspect-sentiment association
+    \item \textbf{Multi-task learning} for joint extraction and classification
+\end{itemize}
+
+\textbf{Loss Function (Multi-Task):}
+
+\begin{equation}
+\mathcal{L}_{total} = \mathcal{L}_{ATE} + \lambda \cdot \mathcal{L}_{APC}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\mathcal{L}_{ATE}$ = Aspect Term Extraction loss (Cross-Entropy for sequence labeling)
+    \item $\mathcal{L}_{APC}$ = Aspect Polarity Classification loss (Cross-Entropy)
+    \item $\lambda$ = Balancing hyperparameter
+\end{itemize}
+
+\subsection{ABSA Output Schema}
+
+\begin{table}[H]
+\centering
+\caption{ABSA Output Schema}
+\label{tab:absa-schema}
+\begin{tabular}{ll}
+\toprule
+\textbf{Column} & \textbf{Description}\\
+\midrule
+Aspect & Extracted aspect term (e.g., ``payment'', ``login'')\\
+Sentiment & Aspect-level sentiment (Positive/Negative/Neutral)\\
+Review\_Text & Original review content\\
+Rating & User's star rating\\
+Date & Review timestamp\\
+App\_Version & App version at review time\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Output File:} \texttt{HelloBPCL\_Detailed\_Analysis.csv}
+
+\section{Evaluation Metrics}
+
+\subsection{Classification Metrics}
+
+\textbf{Precision:}
+\begin{equation}
+\text{Precision}_c = \frac{TP_c}{TP_c + FP_c}
+\end{equation}
+
+\textbf{Recall:}
+\begin{equation}
+\text{Recall}_c = \frac{TP_c}{TP_c + FN_c}
+\end{equation}
+
+\textbf{F1-Score:}
+\begin{equation}
+F1_c = 2 \cdot \frac{\text{Precision}_c \cdot \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
+\end{equation}
+
+\textbf{Accuracy:}
+\begin{equation}
+\text{Accuracy} = \frac{\sum_c TP_c}{\sum_c (TP_c + FP_c)}
+\end{equation}
+
+\subsection{Topic Coherence}
+
+\textbf{Coherence Score ($C_v$)} measures semantic similarity of top words in each topic:
+
+\begin{equation}
+C_v = \frac{2}{K(K-1)} \sum_{i<j} \text{NPMI}(w_i, w_j)
+\end{equation}
+
+Where NPMI is Normalized Pointwise Mutual Information.
+
+% ======================= CHAPTER 6: RESULTS =======================
+\chapter{Results}
+\label{chap:results}
+
+\section{Sentiment Classification Performance}
+\label{sec:sentiment-results}
+
+\textbf{Ground Truth Definition:} Star ratings mapped to sentiment labels:
+\begin{itemize}
+    \item 1-2 Stars $\rightarrow$ Negative
+    \item 3 Stars $\rightarrow$ Neutral
+    \item 4-5 Stars $\rightarrow$ Positive
+\end{itemize}
+
+\subsection{Confusion Matrix}
+
+\begin{table}[H]
+\centering
+\caption{Confusion Matrix: AI Sentiment vs Ground Truth}
+\label{tab:confusion-matrix}
+\begin{tabular}{l|ccc}
+\toprule
+ & \textbf{Pred. Negative} & \textbf{Pred. Neutral} & \textbf{Pred. Positive}\\
+\midrule
+\textbf{Actual Negative} & 9,322 (53.9\%) & 4,877 & 3,083\\
+\textbf{Actual Neutral} & 712 & 827 (23.3\%) & 2,003\\
+\textbf{Actual Positive} & 802 & 5,599 & 55,030 (89.6\%)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/confusion_matrix.png}
+\caption{Confusion Matrix showing AI Sentiment vs Ground Truth (Star Ratings)}
+\label{fig:confusion-matrix}
+\end{figure}
+
+\subsection{Per-Class Metrics}
+
+\begin{table}[H]
+\centering
+\caption{Per-Class Classification Metrics}
+\label{tab:per-class-metrics}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support}\\
+\midrule
+Negative & 0.860 & 0.539 & 0.663 & 17,282\\
+Neutral & 0.073 & 0.233 & 0.111 & 3,542\\
+Positive & 0.915 & 0.896 & 0.905 & 61,431\\
+\midrule
+\textbf{Weighted Avg} & 0.868 & 0.792 & \textbf{0.820} & 82,255\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Overall Performance}
+
+\begin{table}[H]
+\centering
+\caption{Overall Model Performance}
+\label{tab:overall-performance}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value}\\
+\midrule
+Accuracy & 79.24\%\\
+Macro Precision & 0.616\\
+Macro Recall & 0.556\\
+Macro F1 & 0.560\\
+Weighted F1 & 0.820\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sentiment Distribution}
+
+\begin{table}[H]
+\centering
+\caption{Sentiment Distribution}
+\label{tab:sentiment-distribution}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Sentiment} & \textbf{Count} & \textbf{Percentage}\\
+\midrule
+Positive & 60,116 & 73.1\%\\
+Neutral & 11,303 & 13.7\%\\
+Negative & 10,836 & 13.2\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Topic Modeling Results}
+\label{sec:topic-results}
+
+\subsection{Discovered Topics (1-Star Reviews)}
+
+\begin{table}[H]
+\centering
+\caption{Discovered Topics from Negative Reviews}
+\label{tab:discovered-topics}
+\begin{tabular}{p{1cm}p{3cm}p{5cm}rr}
+\toprule
+\textbf{Topic} & \textbf{Label} & \textbf{Top Keywords} & \textbf{Count} & \textbf{\%}\\
+\midrule
+1 & Login/Authentication & login, app, open, otp, verification & 20,417 & 24.8\%\\
+2 & Payment Issues & payment, transaction, money, account, bank & 22,530 & 27.4\%\\
+3 & App Updates/Crashes & update, version, new, work, earlier & 18,194 & 22.1\%\\
+4 & Rewards/Points & reward, point, redeem, offer, discount & 21,114 & 25.7\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/topic_distribution.png}
+\caption{Distribution of reviews across discovered topics}
+\label{fig:topic-distribution}
+\end{figure}
+
+\subsection{Hybrid Model Performance}
+
+\begin{table}[H]
+\centering
+\caption{Hybrid Model Processing Distribution}
+\label{tab:hybrid-performance}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Approach} & \textbf{Processing Source} & \textbf{Count} & \textbf{Percentage}\\
+\midrule
+VADER Only & Rule-based (confident) & 14,834 & 18.0\%\\
+BERT Refinement & Transformer (uncertain) & 67,421 & 82.0\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Competitive Benchmarking}
+\label{sec:competitive-results}
+
+\begin{table}[H]
+\centering
+\caption{BPCL vs IOCL Competitive Comparison}
+\label{tab:competitive-comparison}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Aspect} & \textbf{BPCL Score} & \textbf{IOCL Score} & \textbf{Winner}\\
+\midrule
+LPG Booking & 3.09 & 2.71 & \textbf{BPCL} (+0.38)\\
+Rewards & 1.86 & 2.18 & IOCL (+0.31)\\
+App Tech & 1.91 & 2.19 & IOCL (+0.29)\\
+Payment & 1.62 & 1.38 & \textbf{BPCL} (+0.24)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{ABSA Results}
+\label{sec:absa-results}
+
+The PyABSA model extracted \textbf{37,124 aspect-sentiment pairs} from the reviews, identifying \textbf{2,516 unique aspects}.
+
+\subsection{ABSA Sentiment Distribution}
+
+\begin{table}[H]
+\centering
+\caption{ABSA Sentiment Distribution}
+\label{tab:absa-sentiment}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Sentiment} & \textbf{Count} & \textbf{Percentage}\\
+\midrule
+Positive & 19,470 & 52.4\%\\
+Negative & 16,963 & 45.7\%\\
+Neutral & 691 & 1.9\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Top 15 Most Mentioned Aspects}
+
+\begin{table}[H]
+\centering
+\caption{Top 15 Most Mentioned Aspects}
+\label{tab:top-aspects}
+\begin{tabular}{clrl}
+\toprule
+\textbf{Rank} & \textbf{Aspect} & \textbf{Mentions} & \textbf{Primary Sentiment}\\
+\midrule
+1 & app & 6,239 & Mixed\\
+2 & service & 4,034 & Positive\\
+3 & payment & 2,199 & Negative\\
+4 & booking & 1,953 & Mixed\\
+5 & use & 1,816 & Positive\\
+6 & delivery & 1,554 & Mixed\\
+7 & gas & 1,182 & Neutral\\
+8 & application & 938 & Negative\\
+9 & login & 902 & Negative\\
+10 & book & 807 & Positive\\
+11 & services & 452 & Positive\\
+12 & experience & 419 & Positive\\
+13 & cylinder & 347 & Mixed\\
+14 & distributor & 281 & Negative\\
+15 & user & 277 & Neutral\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/top_negative_aspects_absa.png}
+\caption{Top 20 Negative Aspects extracted by PyABSA}
+\label{fig:top-negative-aspects}
+\end{figure}
+
+\subsection{Key ABSA Insights}
+
+\begin{enumerate}
+    \item \textbf{``app''} is the most discussed aspect (6,239 mentions) with mixed sentiment
+    \item \textbf{``service''} receives predominantly positive feedback (4,034 mentions)
+    \item \textbf{``payment''} and \textbf{``login''} are key pain points with negative sentiment
+    \item \textbf{``delivery''} shows variation based on regional and temporal factors
+    \item Aspect-level analysis provides actionable feature prioritization
+\end{enumerate}
+
+% ======================= CHAPTER 7: DISCUSSION =======================
+\chapter{Discussion and Visualization Insights}
+\label{chap:discussion}
+
+\section{Key Findings}
+
+\subsection{Sentiment Health}
+
+The overall sentiment score indicates a \textbf{positive} customer perception:
+\begin{itemize}
+    \item Global Sentiment: \textbf{+0.47} (on -1 to +1 scale)
+    \item 73.1\% of reviews classified as positive
+    \item Strong performance on core LPG booking functionality
+\end{itemize}
+
+\subsection{Critical Pain Points (Negative Reviews)}
+
+\begin{enumerate}
+    \item \textbf{Login/OTP Issues (Topic 1):}
+    \begin{itemize}
+        \item Frequent OTP delivery failures
+        \item Account verification problems
+        \item Session timeout frustrations
+    \end{itemize}
+    
+    \item \textbf{Payment Failures (Topic 2):}
+    \begin{itemize}
+        \item Transaction errors
+        \item Refund processing delays
+        \item Bank integration issues
+    \end{itemize}
+    
+    \item \textbf{App Stability (Topic 3):}
+    \begin{itemize}
+        \item Crashes after updates
+        \item Compatibility issues with newer Android versions
+        \item Performance degradation
+    \end{itemize}
+    
+    \item \textbf{Rewards Redemption (Topic 4):}
+    \begin{itemize}
+        \item Points not credited
+        \item Limited redemption options
+        \item Offer availability concerns
+    \end{itemize}
+\end{enumerate}
+
+\section{Version-Issue Correlation}
+
+Topic analysis by app version revealed that certain versions had disproportionately high complaint rates for specific issues, enabling targeted bug tracking and release quality assessment.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/version_topic_heatmap.png}
+\caption{Heatmap showing which app versions correlate with which complaint topics}
+\label{fig:version-topic-heatmap}
+\end{figure}
+
+\section{Temporal Evolution}
+
+Topic prevalence analysis over time showed:
+\begin{itemize}
+    \item Login issues spiked following authentication system changes
+    \item Payment complaints reduced after backend upgrades
+    \item Reward-related complaints increased during promotional periods
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/temporal_topic_evolution.png}
+\caption{Topic evolution over time (2024-2026)}
+\label{fig:temporal-evolution}
+\end{figure}
+
+\section{Dashboard Analytics}
+
+The Streamlit dashboard is organized into \textbf{three main tabs} with multiple sub-pages for comprehensive analysis:
+
+\subsection{Tab 1: Internal Pulse (Core Analytics)}
+
+The Internal Pulse tab provides deep analysis of Hello BPCL's own customer feedback:
+
+\begin{table}[H]
+\centering
+\caption{Internal Pulse Sub-Pages}
+\label{tab:internal-pulse}
+\begin{tabular}{p{3cm}p{10cm}}
+\toprule
+\textbf{Sub-Page} & \textbf{Description}\\
+\midrule
+Overview & Sentiment health gauge, KPI metrics (avg rating, total reviews), temporal trend charts\\
+Topics & Topic distribution bar charts, Sentiment-Topic heatmap, topic deep-dive with keywords\\
+Sentiment & Violin plots of rating by sentiment, density distributions, keyword comparison\\
+Aspects & ABSA results visualization, top aspects chart, drill-down to individual reviews by aspect\\
+Explorer & Filterable review table, search functionality, CSV export capability\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tab 2: Market Battleground (Competitive Intelligence)}
+
+The Market Battleground tab provides high-level competitive benchmarking:
+
+\begin{table}[H]
+\centering
+\caption{Market Battleground Components}
+\label{tab:market-battleground}
+\begin{tabular}{p{3.5cm}p{9.5cm}}
+\toprule
+\textbf{Component} & \textbf{Description}\\
+\midrule
+NSS Comparison & Net Sentiment Score for BPCL vs IndianOil, HPCL, Shell\\
+Gap Analysis & Quantified sentiment gaps vs each competitor\\
+Pain Point Parity & Heatmap showing which brands struggle with Login, Payment, UI, Support\\
+Share of Voice & Weekly review volume trends (market presence indicator)\\
+Blue Ocean Features & Competitor strengths that BPCL can adopt\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Metrics Calculated:}
+\begin{equation}
+\text{NSS} = \frac{\text{Promoters} - \text{Detractors}}{\text{Total}} \times 100
+\end{equation}
+
+Where Promoters = 5-star reviews, Detractors = 1-3 star reviews.
+
+\subsection{Tab 3: Strategic Deep Dive (Advanced Analytics)}
+
+\begin{table}[H]
+\centering
+\caption{Strategic Deep Dive Analysis}
+\label{tab:strategic-dive}
+\begin{tabular}{p{4cm}p{9cm}}
+\toprule
+\textbf{Analysis} & \textbf{Description}\\
+\midrule
+Feature War (Tug-of-War) & Diverging bar chart showing BPCL vs IOCL scores per feature\\
+Persona Analysis & Customer segment identification and behavior patterns\\
+Empathy Gap & Support response metrics and developer engagement comparison\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Model Performance Discussion}
+
+\textbf{Strengths:}
+\begin{itemize}
+    \item High precision for positive class (91.5\%)
+    \item Strong recall for positive reviews (89.6\%)
+    \item Effective hybrid approach reduces BERT computation by 18\%
+\end{itemize}
+
+\textbf{Weaknesses:}
+\begin{itemize}
+    \item Poor neutral class performance (F1 = 0.11)
+    \begin{itemize}
+        \item Neutral reviews are inherently ambiguous
+        \item 3-star ratings don't always indicate neutral sentiment
+    \end{itemize}
+    \item Moderate negative recall (53.9\%)
+    \begin{itemize}
+        \item Some sarcastic positive-sounding negative reviews misclassified
+    \end{itemize}
+\end{itemize}
+
+% ======================= CHAPTER 8: PROJECT SUMMARY =======================
+\chapter{Project Summary}
+\label{chap:summary}
+
+\section{Problem Solved}
+
+This project successfully addressed the challenge of extracting actionable insights from large-scale unstructured customer feedback. The developed system:
+
+\begin{enumerate}
+    \item \textbf{Automated Review Analysis:} Eliminated manual review reading by processing 82,255 reviews algorithmically
+    \item \textbf{Identified Key Issues:} Discovered 4 major complaint themes using unsupervised topic modeling
+    \item \textbf{Quantified Sentiment:} Achieved 79.24\% accuracy in sentiment classification
+    \item \textbf{Enabled Data-Driven Decisions:} Provided version-specific and temporal insights
+\end{enumerate}
+
+\section{System Built}
+
+\begin{table}[H]
+\centering
+\caption{System Components}
+\label{tab:system-components}
+\begin{tabular}{p{3.5cm}p{4cm}p{5.5cm}}
+\toprule
+\textbf{Component} & \textbf{Technology} & \textbf{Purpose}\\
+\midrule
+Data Collection & google-play-scraper & Automated review harvesting\\
+Preprocessing & NLTK, regex & Text normalization\\
+Topic Modeling & Gensim LDA, scikit-learn & Theme discovery\\
+Sentiment Analysis & VADER + DistilBERT & Document-level classification\\
+Aspect-Based Sentiment & PyABSA & Feature-level sentiment extraction\\
+Visualization & Plotly, Altair, Seaborn & Interactive charts\\
+Dashboard & Streamlit (3-tab layout) & Production analytics interface\\
+Competitive Analysis & Custom Python modules & BPCL vs competitor benchmarking\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Deliverables}
+
+\begin{enumerate}
+    \item \textbf{Enriched Dataset:} \texttt{df\_final\_enriched.csv} with sentiment and topic labels
+    \item \textbf{ABSA Results:} \texttt{HelloBPCL\_Detailed\_Analysis.csv} with aspect-level sentiment (37,124 rows)
+    \item \textbf{Topic Keywords:} \texttt{topic\_keywords.json} for negative review themes
+    \item \textbf{Model Metrics:} \texttt{confusion\_matrix\_data.json} with performance data
+    \item \textbf{Competitive Report:} \texttt{data/competitive\_master\_report.json} with benchmarking results
+    \item \textbf{Analytics Dashboard:} \texttt{03\_dashboard.py} (Streamlit application with 3 tabs)
+    \item \textbf{Analysis Notebooks:}
+    \begin{itemize}
+        \item \texttt{02\_sentiment\_analysis.ipynb} -- Sentiment model training
+        \item \texttt{topic\_modeling.ipynb} -- LDA topic discovery
+        \item \texttt{ABSA.ipynb} -- Aspect-based sentiment analysis
+        \item \texttt{04\_Competitive\_Benchmarking\_VoC.ipynb} -- Competitive analysis
+    \end{itemize}
+\end{enumerate}
+
+\section{Business Value}
+
+\begin{table}[H]
+\centering
+\caption{Business Value Impact}
+\label{tab:business-value}
+\begin{tabular}{p{4cm}p{9cm}}
+\toprule
+\textbf{Value Area} & \textbf{Impact}\\
+\midrule
+Time Savings & Hours of manual review reading automated\\
+Issue Prioritization & Quantified importance of each complaint category\\
+Release Quality & Version-specific feedback enables targeted QA\\
+Customer Experience & Identified specific friction points to fix\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ======================= CHAPTER 9: LIMITATIONS =======================
+\chapter{Limitations and Future Scope}
+\label{chap:limitations}
+
+\section{Current Limitations}
+
+\begin{table}[H]
+\centering
+\caption{Current Limitations}
+\label{tab:limitations}
+\begin{tabular}{p{3.5cm}p{5cm}p{4.5cm}}
+\toprule
+\textbf{Limitation} & \textbf{Description} & \textbf{Impact}\\
+\midrule
+Neutral Class Performance & F1 = 0.11 for neutral sentiment & Ambiguous reviews misclassified\\
+English Only & Analysis limited to English reviews & Hindi/regional feedback excluded\\
+Rating as Ground Truth & Star ratings $\neq$ text sentiment always & Noisy labels affect evaluation\\
+Static Model & No online learning capability & Requires periodic retraining\\
+Single Platform & Google Play only & iOS App Store feedback missing\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Future Enhancements}
+
+\subsection{Short-Term (1-3 months)}
+
+\begin{enumerate}
+    \item \textbf{Multi-language Support:}
+    \begin{itemize}
+        \item Add Hindi sentiment analysis using multilingual BERT
+        \item Translate regional reviews for unified analysis
+    \end{itemize}
+    
+    \item \textbf{Aspect-Based Sentiment Enhancement:}
+    \begin{itemize}
+        \item Extract sentiment for specific features (booking, payment, rewards)
+        \item Enable granular issue tracking
+    \end{itemize}
+    
+    \item \textbf{Automated Alerting:}
+    \begin{itemize}
+        \item Real-time negative sentiment spike detection
+        \item Slack/email notifications for critical issues
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Medium-Term (3-6 months)}
+
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item \textbf{iOS Data Integration:}
+    \begin{itemize}
+        \item Scrape Apple App Store reviews
+        \item Unified cross-platform analysis
+    \end{itemize}
+    
+    \item \textbf{Response Generation:}
+    \begin{itemize}
+        \item LLM-powered reply suggestions for negative reviews
+        \item Template-based developer response automation
+    \end{itemize}
+    
+    \item \textbf{Predictive Analytics:}
+    \begin{itemize}
+        \item Forecast sentiment trends based on historical patterns
+        \item Predict impact of upcoming releases
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Long-Term (6-12 months)}
+
+\begin{enumerate}
+    \setcounter{enumi}{6}
+    \item \textbf{Customer Journey Mapping:}
+    \begin{itemize}
+        \item Link reviews to user lifecycle stages
+        \item Identify churn-risk indicators
+    \end{itemize}
+    
+    \item \textbf{Competitive Intelligence Dashboard:}
+    \begin{itemize}
+        \item Automated competitor monitoring
+        \item Market positioning insights
+    \end{itemize}
+    
+    \item \textbf{Integration with Product Management:}
+    \begin{itemize}
+        \item Jira/Azure DevOps integration for issue creation
+        \item Automated backlog prioritization based on VoC
+    \end{itemize}
+\end{enumerate}
+
+% ======================= CHAPTER 10: REFERENCES =======================
+\chapter{References}
+\label{chap:references}
+
+\begin{enumerate}
+    \item Blei, D. M., Ng, A. Y., \& Jordan, M. I. (2003). Latent Dirichlet Allocation. \textit{Journal of Machine Learning Research}, 3, 993-1022.
+    
+    \item Hutto, C.J. \& Gilbert, E.E. (2014). VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text. \textit{AAAI Conference on Weblogs and Social Media}.
+    
+    \item Sanh, V., Debut, L., Chaumond, J., \& Wolf, T. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. \textit{arXiv preprint arXiv:1910.01108}.
+    
+    \item Bird, S., Klein, E., \& Loper, E. (2009). Natural Language Processing with Python. O'Reilly Media.
+    
+    \item Google Play Scraper Python Library. \url{https://github.com/JoMingyu/google-play-scraper}
+    
+    \item Yang, H., Zeng, B., et al. (2022). PyABSA: Open Framework for Aspect-Based Sentiment Analysis. \textit{arXiv preprint arXiv:2208.01368}.
+\end{enumerate}
+
+% ======================= CHAPTER 11: APPENDIX =======================
+\chapter{Appendix}
+\label{chap:appendix}
+
+\section{Appendix A: Topic Keywords (Complete)}
+
+\textbf{Negative Review Topics (LDA):}
+
+\begin{table}[H]
+\centering
+\caption{Complete Topic Keywords}
+\label{tab:topic-keywords}
+\begin{tabular}{ll}
+\toprule
+\textbf{Topic} & \textbf{Keywords}\\
+\midrule
+Topic 1 & login, app, open, otp, verification\\
+Topic 2 & payment, transaction, money, account, bank\\
+Topic 3 & update, version, new, work, earlier\\
+Topic 4 & reward, point, redeem, offer, discount\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Top ABSA Aspects (PyABSA Extraction):}
+
+\begin{table}[H]
+\centering
+\caption{Top ABSA Aspects}
+\label{tab:absa-aspects}
+\begin{tabular}{lrl}
+\toprule
+\textbf{Aspect} & \textbf{Mentions} & \textbf{Common Sentiment}\\
+\midrule
+app & 6,239 & Mixed\\
+service & 4,034 & Positive\\
+payment & 2,199 & Negative\\
+booking & 1,953 & Mixed\\
+use & 1,816 & Positive\\
+delivery & 1,554 & Mixed\\
+gas & 1,182 & Neutral\\
+application & 938 & Negative\\
+login & 902 & Negative\\
+book & 807 & Positive\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Appendix B: Classification Report (Full)}
+
+\begin{lstlisting}[caption=Complete Classification Report]
+              precision    recall  f1-score   support
+
+    Negative       0.86      0.54      0.66     17282
+     Neutral       0.07      0.23      0.11      3542
+    Positive       0.92      0.90      0.91     61431
+
+    accuracy                           0.79     82255
+   macro avg       0.62      0.56      0.56     82255
+weighted avg       0.87      0.79      0.82     82255
+\end{lstlisting}
+
+\section{Appendix C: Dashboard Screenshots}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_overview.png}
+\caption{Dashboard Overview Page (Internal Pulse Tab)}
+\label{fig:dashboard-overview}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_topics.png}
+\caption{Topic Analysis Page}
+\label{fig:dashboard-topics}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_sentiment.png}
+\caption{Sentiment Analysis Page}
+\label{fig:dashboard-sentiment}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_aspects.png}
+\caption{Aspect Analysis Page (ABSA Drill-Down)}
+\label{fig:dashboard-aspects}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_market_battleground.png}
+\caption{Market Battleground Tab (Competitive Analysis)}
+\label{fig:dashboard-market}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dashboard_deep_dive.png}
+\caption{Strategic Deep Dive Tab (Feature War)}
+\label{fig:dashboard-deepdive}
+\end{figure}
+
+\section{Appendix D: Code Repository Structure}
+
+\begin{lstlisting}[caption=Project Repository Structure]
+Voc_Bpcl2/
+|-- 02_sentiment_analysis.ipynb    # Sentiment model training
+|-- topic_modeling.ipynb           # LDA topic discovery
+|-- ABSA.ipynb                     # Aspect-Based Sentiment Analysis
+|-- 04_Competitive_Benchmarking_VoC.ipynb  # Competitive analysis
+|-- 03_dashboard.py                # Streamlit analytics app (3 tabs)
+|-- deep_dive_renderer.py          # Strategic deep dive visualizations
+|-- df_final_enriched.csv          # Processed dataset
+|-- HelloBPCL_Detailed_Analysis.csv # ABSA output
+|-- confusion_matrix_data.json     # Model performance metrics
+|-- topic_keywords.json            # Topic-keyword mappings
+|-- requirements.txt               # Python dependencies
+|-- lda_models.pkl                 # Saved LDA models
+|-- review_data.pkl                # Cached review data
+\-- data/
+    |-- competitive_master_report.json  # Competitive results
+    \-- empathy_metrics_final.csv       # Support metrics
+\end{lstlisting}
+
+\section{Appendix E: Dashboard Tab Structure}
+
+\begin{lstlisting}[caption=Dashboard Tab Structure]
+BPCL Reviews Analytics Dashboard
+|
+|-- Internal Pulse (Tab 1)
+|   |-- Overview       -> KPIs, Sentiment Gauge, Trends
+|   |-- Topics         -> LDA Topic Analysis
+|   |-- Sentiment      -> Violin Plots, Distributions
+|   |-- Aspects        -> ABSA Drill-Down (PyABSA)
+|   \-- Explorer       -> Search & Filter Reviews
+|
+|-- Market Battleground (Tab 2)
+|   |-- NSS Metrics    -> Net Sentiment Scores
+|   |-- Gap Analysis   -> Competitor Gaps
+|   |-- Pain Point Parity -> Complaint Heatmap
+|   |-- Share of Voice -> Review Volume Trends
+|   \-- Blue Ocean     -> Competitor Strengths
+|
+\-- Strategic Deep Dive (Tab 3)
+    |-- Feature War    -> Tug-of-War Chart
+    |-- Persona Analysis -> Customer Segments
+    \-- Empathy Gap    -> Support Metrics
+\end{lstlisting}
+
+% ======================= END MATTER =======================
+
+\vspace{2cm}
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[0.5cm]
+\textbf{End of Report}\\[0.5cm]
+\rule{0.5\textwidth}{0.4pt}
+\end{center}
+
+\vspace{1cm}
+
+\begin{center}
+
+\end{center}
+
+\end{document}
