@@ -71,7 +71,7 @@ def _get_latest_ts(conn, source: str) -> datetime:
 # 1. Google Play Store
 # ---------------------------------------------------------------------------
 GOOGLE_PLAY_APPS = [
-    {"app_id": "com.bpcl.loyalty", "app_name": "Hello BPCL"},
+    {"app_id": "com.cgt.bharatgas", "app_name": "Hello BPCL"},
     {"app_id": "com.bpcl.smartfleet", "app_name": "BPCL SmartFleet"},
 ]
 
