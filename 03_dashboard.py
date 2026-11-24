@@ -656,8 +656,15 @@ LIMIT 150000;
 
 
 def _postprocess(df: pd.DataFrame) -> pd.DataFrame:
-    rename = {k: v for k, v in _DB_TO_LEGACY.items() if k in df.columns}
+    df = df.loc[:, ~df.columns.duplicated()].copy()
+    rename = {}
+    for k, v in _DB_TO_LEGACY.items():
+        if k in df.columns:
+            if v in df.columns and k != v:
+                df = df.drop(columns=[v])
+            rename[k] = v
     df = df.rename(columns=rename)
+    df = df.loc[:, ~df.columns.duplicated()]
 
     # source column — keep raw if present, else tag as csv
     if "source" not in df.columns:
@@ -872,18 +879,20 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
 
 
 def nss(df: pd.DataFrame) -> float:
-    if df.empty or "ai_sentiment" not in df.columns:
+    sent_col = "ai_sentiment" if "ai_sentiment" in df.columns else ("sentiment" if "sentiment" in df.columns else None)
+    if df.empty or not sent_col:
         return 0.0
     total = len(df)
-    pos   = (df["ai_sentiment"] == "Positive").sum()
-    neg   = (df["ai_sentiment"] == "Negative").sum()
+    pos   = (df[sent_col] == "Positive").sum()
+    neg   = (df[sent_col] == "Negative").sum()
     return round((pos - neg) / total * 100, 1) if total > 0 else 0.0
 
 
 def pct(df: pd.DataFrame, label: str) -> float:
-    if df.empty or "ai_sentiment" not in df.columns:
+    sent_col = "ai_sentiment" if "ai_sentiment" in df.columns else ("sentiment" if "sentiment" in df.columns else None)
+    if df.empty or not sent_col:
         return 0.0
-    return round((df["ai_sentiment"] == label).sum() / len(df) * 100, 1)
+    return round((df[sent_col] == label).sum() / len(df) * 100, 1)
 
 
 # =============================================================================
@@ -915,8 +924,11 @@ def _axes_style(**overrides) -> dict:
     return base
 
 
-def chart_sentiment_donut(df: pd.DataFrame) -> go.Figure:
-    counts = df["ai_sentiment"].value_counts().reindex(["Positive", "Neutral", "Negative"], fill_value=0)
+def chart_sentiment_donut(df: pd.DataFrame) -> go.Figure | None:
+    sent_col = "ai_sentiment" if "ai_sentiment" in df.columns else ("sentiment" if "sentiment" in df.columns else None)
+    if not sent_col or df.empty:
+        return None
+    counts = df[sent_col].value_counts().reindex(["Positive", "Neutral", "Negative"], fill_value=0)
     _nss   = nss(df)
     colors = [BRAND["positive"], BRAND["neutral"], BRAND["negative"]]
 
@@ -1688,7 +1700,8 @@ def render_urgency_alerts(df: pd.DataFrame, max_alerts: int = 5):
 
     for _, row in critical.head(max_alerts).iterrows():
         source  = str(row.get("source", "csv"))
-        content = str(row.get("content", ""))[:160]
+        raw_c   = str(row.get("content", ""))
+        content = raw_c[:160] + ("…" if len(raw_c) > 160 else "")
         date_s  = str(row.get("at", ""))[:10]
         badge   = source_badge_html(source)
         st.markdown(
@@ -1697,7 +1710,7 @@ def render_urgency_alerts(df: pd.DataFrame, max_alerts: int = 5):
               <div class="urgency-alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
               <div class="urgency-alert-text">
                 {badge}&nbsp;&nbsp;<strong>{date_s}</strong><br>
-                {content}{"…" if len(str(row.get("content",""))>160) else ""}
+                {content}
               </div>
             </div>
             """,
@@ -2042,9 +2055,10 @@ def page_aspects(
                 help="Llama 3.3 70B delivers highest enterprise accuracy; 8B delivers maximum speed.",
             )
             if st.button("Apply API Key", key="save_groq_key_btn"):
-                if input_key.strip():
-                    st.session_state["groq_api_key"] = input_key.strip()
-                    os.environ["GROQ_API_KEY"] = input_key.strip()
+                s_key = str(input_key).strip() if isinstance(input_key, str) else ""
+                if s_key:
+                    st.session_state["groq_api_key"] = s_key
+                    os.environ["GROQ_API_KEY"] = s_key
                     st.success("Groq API key activated for this session.")
                     st.rerun()
                 else:
