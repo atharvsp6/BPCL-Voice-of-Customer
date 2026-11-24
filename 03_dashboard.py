@@ -156,39 +156,39 @@ def inject_global_css():
         }}
         div[data-testid="stSidebarContent"] div[data-baseweb="input"],
         div[data-testid="stSidebarContent"] div[data-baseweb="base-input"],
-        div[data-testid="stSidebarContent"] div[data-baseweb="textarea"] {
+        div[data-testid="stSidebarContent"] div[data-baseweb="textarea"] {{
             background: rgba(255,255,255,0.12) !important;
             border: 1.5px solid rgba(255,255,255,0.25) !important;
             border-radius: 8px !important;
-        }
+        }}
         div[data-testid="stSidebarContent"] div[data-baseweb="input"]:focus-within,
-        div[data-testid="stSidebarContent"] div[data-baseweb="base-input"]:focus-within {
+        div[data-testid="stSidebarContent"] div[data-baseweb="base-input"]:focus-within {{
             border-color: {BRAND['gold']} !important;
             box-shadow: 0 0 0 2px rgba(245,166,35,0.3) !important;
-        }
+        }}
         div[data-testid="stSidebarContent"] input,
-        div[data-testid="stSidebarContent"] textarea {
+        div[data-testid="stSidebarContent"] textarea {{
             color: #FFFFFF !important;
             -webkit-text-fill-color: #FFFFFF !important;
             background: transparent !important;
             font-size: 0.88rem !important;
             font-weight: 500 !important;
             caret-color: {BRAND['gold']} !important;
-        }
+        }}
         div[data-testid="stSidebarContent"] input::placeholder,
-        div[data-testid="stSidebarContent"] textarea::placeholder {
+        div[data-testid="stSidebarContent"] textarea::placeholder {{
             color: rgba(255,255,255,0.55) !important;
             -webkit-text-fill-color: rgba(255,255,255,0.55) !important;
-        }
-        div[data-testid="stSidebarContent"] [data-baseweb="select"] > div {
+        }}
+        div[data-testid="stSidebarContent"] [data-baseweb="select"] > div {{
             background: rgba(255,255,255,0.12) !important;
             border: 1.5px solid rgba(255,255,255,0.25) !important;
             color: #FFFFFF !important;
             border-radius: 8px !important;
-        }
-        div[data-testid="stSidebarContent"] [data-baseweb="select"] * {
+        }}
+        div[data-testid="stSidebarContent"] [data-baseweb="select"] * {{
             color: #FFFFFF !important;
-        }
+        }}
         div[data-testid="stSidebarContent"] button {{
             background: rgba(255,255,255,0.10) !important;
             border: 1px solid rgba(255,255,255,0.25) !important;
