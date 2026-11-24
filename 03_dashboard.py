@@ -500,29 +500,195 @@ apply_theme_css()
 
 # =============================================================================
 # DATA LOADING & CACHING
+# Live PostgreSQL path → CSV fallback for local/offline development
 # =============================================================================
-@st.cache_data
-def load_data():
-    """Load the enriched dataset with sentiment and topic labels"""
+
+# ── Column mapping from PostgreSQL schema → legacy dashboard column names ──
+_DB_TO_LEGACY_COLS = {
+    "review_id":       "reviewId",
+    "user_name":       "userName",
+    "user_image_url":  "userImage",
+    "content":         "content",
+    "rating":          "score",
+    "thumbs_up_count": "thumbsUpCount",
+    "app_version":     "appVersion",
+    "created_at":      "at",
+    "reply_content":   "replyContent",
+    "replied_at":      "repliedAt",
+    "processed_text":  "processed_text",
+    "dominant_topic":  "dominant_topic",
+    "topic":           "Topic_Label",
+    "sentiment":       "ai_sentiment",
+    "ai_confidence":   "ai_confidence",
+    "ai_compound":     "ai_compound",
+    "sentiment_score": "sentiment_score",
+}
+
+_LIVE_DATA_QUERY = """
+SELECT
+    review_id, user_name, user_image_url, content, rating,
+    thumbs_up_count, app_version, created_at, reply_content, replied_at,
+    processed_text, dominant_topic, topic, sentiment,
+    ai_confidence, ai_compound, sentiment_score, source, channel_type, aspect
+FROM reviews
+ORDER BY created_at DESC
+LIMIT 150000;
+"""
+
+
+def _postprocess_df(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Shared post-processing for both DB and CSV paths."""
+    # Rename DB columns to legacy names expected by the rest of the dashboard
+    rename_map = {k: v for k, v in _DB_TO_LEGACY_COLS.items() if k in df.columns}
+    df = df.rename(columns=rename_map)
+
+    # Date fields
+    date_col = "at" if "at" in df.columns else None
+    if date_col:
+        df[date_col] = pd.to_datetime(df[date_col], errors="coerce", utc=True)
+        df[date_col] = df[date_col].dt.tz_localize(None)   # strip tz for Plotly compat
+        df["month_year"] = df[date_col].dt.to_period("M").astype(str)
+        df["year"]       = df[date_col].dt.year
+        df["month"]      = df[date_col].dt.month
+        df["week"]       = df[date_col].dt.isocalendar().week
+
+    # Backfill Topic_Label from dominant_topic if missing
+    if "Topic_Label" not in df.columns and "dominant_topic" in df.columns:
+        df["Topic_Label"] = "Topic " + (df["dominant_topic"].fillna(0).astype(int) + 1).astype(str)
+
+    # Ensure ai_sentiment exists (maps to 'sentiment' from DB)
+    if "ai_sentiment" not in df.columns and "sentiment" in df.columns:
+        df["ai_sentiment"] = df["sentiment"]
+
+    # hybrid_sentiment compat (some chart pages reference it)
+    if "hybrid_sentiment" not in df.columns:
+        df["hybrid_sentiment"] = df.get("ai_sentiment", "Neutral")
+
+    return df
+
+
+@st.cache_data(ttl=3600)
+def _load_from_db() -> "pd.DataFrame | None":
+    """
+    Query live data from Supabase PostgreSQL via Streamlit connection.
+    Returns None if the connection is not configured.
+    TTL=1 hour — data refreshes automatically every hour.
+    """
     try:
-        df = pd.read_csv('df_final_enriched.csv')
-        
-        # Parse dates
-        if 'at' in df.columns:
-            df['at'] = pd.to_datetime(df['at'], errors='coerce')
-            df['month_year'] = df['at'].dt.to_period('M').astype(str)
-            df['year'] = df['at'].dt.year
-            df['month'] = df['at'].dt.month
-            df['week'] = df['at'].dt.isocalendar().week
-        
-        # Ensure required columns exist
-        if 'Topic_Label' not in df.columns and 'dominant_topic' in df.columns:
-            df['Topic_Label'] = 'Topic ' + (df['dominant_topic'] + 1).astype(str)
-        
-        return df
-    except FileNotFoundError:
-        st.error("⚠️ Data file 'df_final_enriched.csv' not found.")
+        conn = st.connection("postgresql", type="sql")
+        df = conn.query(_LIVE_DATA_QUERY, ttl=3600)
+        if df is None or df.empty:
+            return None
+        return _postprocess_df(df)
+    except Exception as exc:
+        # Silently return None — caller will fall back to CSV
         return None
+
+
+@st.cache_data(ttl=3600)
+def _load_from_csv() -> "pd.DataFrame | None":
+    """Load legacy CSV file (offline / local development fallback)."""
+    import pathlib
+
+    candidates = [
+        pathlib.Path("df_final_enriched.csv"),
+        pathlib.Path(__file__).parent / "df_final_enriched.csv",
+    ]
+    for path in candidates:
+        if path.exists():
+            df = pd.read_csv(str(path))
+            return _postprocess_df(df)
+    return None
+
+
+@st.cache_data(ttl=3600)
+def load_data() -> "pd.DataFrame | None":
+    """
+    Smart data loader with automatic source detection:
+      1. Live PostgreSQL (Supabase) — if [connections.postgresql] is in secrets
+      2. Local CSV fallback          — df_final_enriched.csv
+
+    Shows a small info banner so users always know which source is active.
+    """
+    # ── Try live DB ──────────────────────────────────────────────────────────
+    db_configured = (
+        hasattr(st, "secrets")
+        and "connections" in st.secrets
+        and "postgresql" in st.secrets.get("connections", {})
+    )
+
+    if db_configured:
+        df = _load_from_db()
+        if df is not None and not df.empty:
+            st.sidebar.success(
+                f"🟢 **Live DB** · {len(df):,} reviews",
+                icon="🛢️",
+            )
+            return df
+        else:
+            st.sidebar.warning("⚠️ DB connected but returned no data — loading CSV fallback.")
+
+    # ── Fall back to CSV ─────────────────────────────────────────────────────
+    df = _load_from_csv()
+    if df is not None:
+        st.sidebar.info(
+            f"📂 **CSV mode** · {len(df):,} reviews  \n"
+            "_Configure Supabase secrets for live data._",
+            icon="💡",
+        )
+        return df
+
+    st.error(
+        "❌ No data source found.\n\n"
+        "Either configure Supabase credentials in Streamlit secrets "
+        "or place `df_final_enriched.csv` in the project root.",
+        icon="🚨",
+    )
+    return None
+
+
+# ── Live KPI fragment — auto-refreshes every 10 minutes ──────────────────────
+@st.fragment(run_every="10m")
+def _live_kpi_banner():
+    """
+    Silently re-queries the DB every 10 minutes and updates the KPI banner.
+    Only shown when PostgreSQL is the active data source.
+    """
+    db_configured = (
+        hasattr(st, "secrets")
+        and "connections" in st.secrets
+        and "postgresql" in st.secrets.get("connections", {})
+    )
+    if not db_configured:
+        return
+
+    try:
+        conn = st.connection("postgresql", type="sql")
+        summary = conn.query(
+            """
+            SELECT
+                COUNT(*)                                            AS total_reviews,
+                ROUND(AVG(rating)::NUMERIC, 2)                     AS avg_rating,
+                ROUND(AVG(sentiment_score)::NUMERIC, 4)            AS avg_sentiment,
+                MAX(created_at)                                     AS latest_review,
+                COUNT(*) FILTER (WHERE sentiment = 'Positive')     AS positive_count,
+                COUNT(*) FILTER (WHERE sentiment = 'Negative')     AS negative_count
+            FROM reviews;
+            """,
+            ttl=600,
+        )
+        if summary is not None and not summary.empty:
+            row = summary.iloc[0]
+            cols = st.columns(6)
+            cols[0].metric("📊 Live Total",   f"{int(row['total_reviews']):,}")
+            cols[1].metric("⭐ Avg Rating",   f"{row['avg_rating']:.2f}")
+            cols[2].metric("🎯 Avg Sentiment",f"{row['avg_sentiment']:.3f}")
+            cols[3].metric("🟢 Positive",     f"{int(row['positive_count']):,}")
+            cols[4].metric("🔴 Negative",     f"{int(row['negative_count']):,}")
+            if row["latest_review"]:
+                cols[5].metric("📅 Latest",   str(row["latest_review"])[:10])
+    except Exception:
+        pass   # fragment errors should never crash the main page
 
 @st.cache_data
 def load_confusion_matrix():
@@ -2061,11 +2227,16 @@ def page_strategic_deep_dive():
 # MAIN APP
 # =============================================================================
 def main():
-    # Load data
+    # Load data (live DB or CSV fallback)
     df = load_data()
     cm_data = load_confusion_matrix()
     topic_keywords = load_topic_keywords()
-    
+
+    # ── Live KPI banner (auto-refreshes every 10 min from DB) ────────────────
+    # Renders a compact live metrics strip at the very top when DB is active.
+    # Uses @st.fragment so only this component re-runs, not the whole page.
+    _live_kpi_banner()
+
     if df is None:
         st.stop()
     

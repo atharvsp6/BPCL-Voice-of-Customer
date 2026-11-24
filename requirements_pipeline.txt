@@ -1,0 +1,50 @@
+# ============================================================
+# BPCL VoC — Pipeline-only requirements
+# Install with: pip install -r requirements_pipeline.txt
+# ============================================================
+
+# ── Core ─────────────────────────────────────────────────────
+pandas>=1.5.0
+numpy>=1.23.0
+python-dateutil>=2.8.0
+python-dotenv>=1.0.0
+
+# ── Database ─────────────────────────────────────────────────
+psycopg2-binary>=2.9.6
+SQLAlchemy>=2.0.0
+
+# ── NLP / Sentiment ──────────────────────────────────────────
+# HuggingFace RoBERTa (primary)
+transformers>=4.35.0
+torch>=2.0.0           # CPU-only build is fine; use --index-url for CUDA
+# VADER (fallback — no model download needed)
+vaderSentiment>=3.3.2
+# NLTK (VADER lexicon)
+nltk>=3.8.0
+
+# ── App Store Scrapers ───────────────────────────────────────
+google-play-scraper>=1.2.4
+app-store-scraper>=0.3.5
+
+# ── Reddit ───────────────────────────────────────────────────
+praw>=7.7.0
+
+# ── YouTube ──────────────────────────────────────────────────
+google-api-python-client>=2.100.0
+
+# ── Twitter / X ──────────────────────────────────────────────
+# twscrape: authenticated scraping (optional; RSS fallback used if no creds)
+twscrape>=0.12.0
+# RSS / Atom feed parsing (Nitter fallback)
+feedparser>=6.0.10
+
+# ── Instagram ────────────────────────────────────────────────
+instaloader>=4.10.0
+
+# ── Web scraping (Consumer Forums) ───────────────────────────
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# ── Utilities ────────────────────────────────────────────────
+tqdm>=4.65.0
