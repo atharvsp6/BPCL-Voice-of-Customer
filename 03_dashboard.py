@@ -629,6 +629,16 @@ def load_data() -> "pd.DataFrame | None":
 
     if selected_mode.startswith("🟢"):
         df = _load_from_db()
+        # If cache returned None or empty, force an uncached fetch to see if new data arrived
+        if df is None or df.empty:
+            try:
+                conn = st.connection("postgresql", type="sql")
+                df_direct = conn.query(_LIVE_DATA_QUERY, ttl=0)
+                if df_direct is not None and not df_direct.empty:
+                    df = _postprocess_df(df_direct)
+            except Exception:
+                pass
+
         if df is not None and not df.empty:
             channel_count = df["source"].nunique() if "source" in df.columns else 1
             st.sidebar.success(
@@ -640,7 +650,10 @@ def load_data() -> "pd.DataFrame | None":
                 st.rerun()
             return df
         else:
-            st.sidebar.info("Live DB has no records yet. Loading Historical Analysis.")
+            st.sidebar.warning("Connecting to Live DB...")
+            if st.sidebar.button("🔄 Force Refresh Database", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
             return _load_from_csv()
     else:
         df = _load_from_csv()
