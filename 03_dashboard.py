@@ -567,20 +567,20 @@ def _postprocess_df(df: "pd.DataFrame") -> "pd.DataFrame":
     return df
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=120)
 def _load_from_db() -> "pd.DataFrame | None":
     """
     Query live data from Supabase PostgreSQL via Streamlit connection.
-    Returns None if the connection is not configured or query fails.
-    TTL=5 minutes — data refreshes automatically every 5 minutes.
+    Returns DataFrame if successful, None if empty or not configured.
     """
     try:
         conn = st.connection("postgresql", type="sql")
-        df = conn.query(_LIVE_DATA_QUERY, ttl=300)
+        df = conn.query(_LIVE_DATA_QUERY, ttl=0)
         if df is None or df.empty:
             return None
         return _postprocess_df(df)
     except Exception as exc:
+        st.sidebar.error(f"DB Error: {exc}")
         return None
 
 
