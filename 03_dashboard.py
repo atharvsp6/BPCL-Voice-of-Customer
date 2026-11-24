@@ -789,7 +789,6 @@ _CHART_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor =BRAND["plot_bg"],
     font=dict(family="Inter, system-ui, sans-serif", color=BRAND["text_primary"]),
-    margin=dict(l=0, r=0, t=40, b=0),
     hoverlabel=dict(
         bgcolor=BRAND["navy"],
         font_color=BRAND["white"],
