@@ -888,8 +888,8 @@ def chart_aspect_stacked_bar(df: pd.DataFrame) -> go.Figure | None:
         **_CHART_LAYOUT,
         barmode="stack",
         title=dict(text="Aspect Sentiment Breakdown", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title="Percentage", ticksuffix="%", range=[0, 100]),
-        yaxis=dict(**_axes_style(), title=""),
+        xaxis=_axes_style( title="Percentage", ticksuffix="%", range=[0, 100]),
+        yaxis=_axes_style( title=""),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                     font=dict(size=11), bgcolor="rgba(0,0,0,0)"),
         height=360,
@@ -928,8 +928,8 @@ def chart_timeline(df: pd.DataFrame) -> go.Figure | None:
     fig.update_layout(
         **_CHART_LAYOUT,
         title=dict(text="Omnichannel Volume & Sentiment Timeline", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title=""),
-        yaxis=dict(**_axes_style(), title="Weekly Reviews"),
+        xaxis=_axes_style( title=""),
+        yaxis=_axes_style( title="Weekly Reviews"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                     font=dict(size=11), bgcolor="rgba(0,0,0,0)"),
         height=300,
@@ -977,8 +977,8 @@ def chart_complaint_heatmap(df: pd.DataFrame) -> go.Figure | None:
     fig.update_layout(
         **_CHART_LAYOUT,
         title=dict(text="Complaint Density Matrix (Negative Reviews)", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title=""),
-        yaxis=dict(**_axes_style(), title=""),
+        xaxis=_axes_style( title=""),
+        yaxis=_axes_style( title=""),
         coloraxis_showscale=False,
         height=300,
         margin=dict(l=0, r=0, t=50, b=0),
@@ -1009,8 +1009,8 @@ def chart_rating_bar(df: pd.DataFrame) -> go.Figure | None:
     fig.update_layout(
         **_CHART_LAYOUT,
         title=dict(text="Star Rating Distribution", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title="Star Rating", tickmode="linear", tick0=1, dtick=1),
-        yaxis=dict(**_axes_style(), title="Reviews"),
+        xaxis=_axes_style( title="Star Rating", tickmode="linear", tick0=1, dtick=1),
+        yaxis=_axes_style( title="Reviews"),
         barmode="group",
         height=280,
         bargap=0.35,
@@ -1045,8 +1045,8 @@ def chart_topic_trend(df: pd.DataFrame) -> go.Figure | None:
     fig.update_layout(
         **_CHART_LAYOUT,
         title=dict(text="Temporal Topic Evolution (Top 5)", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title=""),
-        yaxis=dict(**_axes_style(), title="Reviews"),
+        xaxis=_axes_style( title=""),
+        yaxis=_axes_style( title="Reviews"),
         legend=dict(title="", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                     font=dict(size=10), bgcolor="rgba(0,0,0,0)"),
         height=300,
@@ -1111,8 +1111,8 @@ def chart_violin(df: pd.DataFrame) -> go.Figure | None:
     fig.update_layout(
         **_CHART_LAYOUT,
         title=dict(text="Rating Distribution by Sentiment", font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left"),
-        xaxis=dict(**_axes_style(), title=""),
-        yaxis=dict(**_axes_style(), title="Star Rating"),
+        xaxis=_axes_style( title=""),
+        yaxis=_axes_style( title="Star Rating"),
         height=320,
         showlegend=False,
         margin=dict(l=0, r=0, t=50, b=0),
@@ -1687,8 +1687,8 @@ def page_topics(df_full: pd.DataFrame, df_filt: pd.DataFrame, topic_keywords: di
     fig_topics.update_traces(textposition="outside", textfont=dict(size=11, color=BRAND["text_secondary"]))
     fig_topics.update_layout(
         **_CHART_LAYOUT,
-        xaxis=dict(**_axes_style(), title="Reviews"),
-        yaxis=dict(**_axes_style(), title=""),
+        xaxis=_axes_style( title="Reviews"),
+        yaxis=_axes_style( title=""),
         coloraxis_showscale=False,
         height=350,
         margin=dict(l=0, r=50, t=20, b=0),
@@ -1727,8 +1727,8 @@ def page_topics(df_full: pd.DataFrame, df_filt: pd.DataFrame, topic_keywords: di
                 ))
                 kw_fig.update_layout(
                     **_CHART_LAYOUT,
-                    xaxis=dict(**_axes_style(), title="Frequency"),
-                    yaxis=dict(**_axes_style(), title=""),
+                    xaxis=_axes_style( title="Frequency"),
+                    yaxis=_axes_style( title=""),
                     height=250,
                     margin=dict(l=0, r=0, t=10, b=0),
                 )
@@ -1785,8 +1785,8 @@ def page_sentiment(df_full: pd.DataFrame, df_filt: pd.DataFrame):
             fig_src.update_traces(line=dict(width=2.5))
             fig_src.update_layout(
                 **_CHART_LAYOUT,
-                xaxis=dict(**_axes_style()),
-                yaxis=dict(**_axes_style(), zeroline=True, zerolinecolor=BRAND["border"], title="Avg Sentiment Score"),
+                xaxis=_axes_style(),
+                yaxis=_axes_style( zeroline=True, zerolinecolor=BRAND["border"], title="Avg Sentiment Score"),
                 legend=dict(title="Platform", orientation="v", font=dict(size=11)),
                 height=320,
                 hovermode="x unified",
@@ -1862,8 +1862,8 @@ def page_aspects(topic_keywords: dict):
                 text=f"Top 15 Aspects — {sel_sent} Sentiment",
                 font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left",
             ),
-            xaxis=dict(**_axes_style(), title="Mentions"),
-            yaxis=dict(**_axes_style(), title=""),
+            xaxis=_axes_style( title="Mentions"),
+            yaxis=_axes_style( title=""),
             height=480,
             margin=dict(l=0, r=0, t=50, b=0),
         )
@@ -2078,8 +2078,8 @@ def page_market_battleground():
             fig_sov.update_traces(line=dict(width=2))
             fig_sov.update_layout(
                 **_CHART_LAYOUT,
-                xaxis=dict(**_axes_style()),
-                yaxis=dict(**_axes_style()),
+                xaxis=_axes_style(),
+                yaxis=_axes_style(),
                 hovermode="x unified",
                 height=320,
                 margin=dict(l=0, r=0, t=20, b=0),
