@@ -567,27 +567,26 @@ def _postprocess_df(df: "pd.DataFrame") -> "pd.DataFrame":
     return df
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def _load_from_db() -> "pd.DataFrame | None":
     """
     Query live data from Supabase PostgreSQL via Streamlit connection.
-    Returns None if the connection is not configured.
-    TTL=1 hour — data refreshes automatically every hour.
+    Returns None if the connection is not configured or query fails.
+    TTL=5 minutes — data refreshes automatically every 5 minutes.
     """
     try:
         conn = st.connection("postgresql", type="sql")
-        df = conn.query(_LIVE_DATA_QUERY, ttl=3600)
+        df = conn.query(_LIVE_DATA_QUERY, ttl=300)
         if df is None or df.empty:
             return None
         return _postprocess_df(df)
     except Exception as exc:
-        # Silently return None — caller will fall back to CSV
         return None
 
 
 @st.cache_data(ttl=3600)
 def _load_from_csv() -> "pd.DataFrame | None":
-    """Load legacy CSV file (offline / local development fallback)."""
+    """Load historical benchmark CSV dataset."""
     import pathlib
 
     candidates = [
@@ -601,47 +600,59 @@ def _load_from_csv() -> "pd.DataFrame | None":
     return None
 
 
-@st.cache_data(ttl=3600)
 def load_data() -> "pd.DataFrame | None":
     """
-    Smart data loader with automatic source detection:
-      1. Live PostgreSQL (Supabase) — if [connections.postgresql] is in secrets
-      2. Local CSV fallback          — df_final_enriched.csv
-
-    Shows a small info banner so users always know which source is active.
+    Dual-mode data loader with an intuitive dataset toggle:
+      1. 🟢 Live Pipeline Data (Supabase Real-Time DB)
+      2. 🏛️ Historical Analysis (100k Benchmark Dataset)
     """
-    # ── Try live DB ──────────────────────────────────────────────────────────
     db_configured = (
         hasattr(st, "secrets")
         and "connections" in st.secrets
         and "postgresql" in st.secrets.get("connections", {})
     )
 
+    st.sidebar.markdown("### 🗄️ Dataset View")
+
+    options = []
     if db_configured:
+        options.append("🟢 Live Pipeline Data")
+    options.append("🏛️ Historical Analysis")
+
+    selected_mode = st.sidebar.radio(
+        "Select Dataset:",
+        options=options,
+        index=0,
+        help="Switch between live real-time customer feedback from Supabase and the 100k historical VoC benchmark dataset.",
+        label_visibility="collapsed",
+    )
+
+    if selected_mode.startswith("🟢"):
         df = _load_from_db()
         if df is not None and not df.empty:
+            channel_count = df["source"].nunique() if "source" in df.columns else 1
             st.sidebar.success(
-                f"🟢 **Live DB** · {len(df):,} reviews",
+                f"**Live Pipeline Active**  \n{len(df):,} reviews · {channel_count} channels",
                 icon="🛢️",
             )
+            if st.sidebar.button("🔄 Refresh Live Data", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
             return df
         else:
-            st.sidebar.warning("⚠️ DB connected but returned no data — loading CSV fallback.")
-
-    # ── Fall back to CSV ─────────────────────────────────────────────────────
-    df = _load_from_csv()
-    if df is not None:
-        st.sidebar.info(
-            f"📂 **CSV mode** · {len(df):,} reviews  \n"
-            "_Configure Supabase secrets for live data._",
-            icon="💡",
-        )
-        return df
+            st.sidebar.info("Live DB has no records yet. Loading Historical Analysis.")
+            return _load_from_csv()
+    else:
+        df = _load_from_csv()
+        if df is not None:
+            st.sidebar.info(
+                f"**Historical Analysis Active**  \n{len(df):,} benchmark reviews",
+                icon="🏛️",
+            )
+            return df
 
     st.error(
-        "❌ No data source found.\n\n"
-        "Either configure Supabase credentials in Streamlit secrets "
-        "or place `df_final_enriched.csv` in the project root.",
+        "❌ No dataset available. Please ensure Supabase credentials or `df_final_enriched.csv` are present.",
         icon="🚨",
     )
     return None
