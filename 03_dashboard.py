@@ -570,18 +570,39 @@ def _postprocess_df(df: "pd.DataFrame") -> "pd.DataFrame":
 @st.cache_data(ttl=120)
 def _load_from_db() -> "pd.DataFrame | None":
     """
-    Query live data from Supabase PostgreSQL via Streamlit connection.
+    Query live data from Supabase PostgreSQL via Streamlit connection or direct psycopg2.
     Returns DataFrame if successful, None if empty or not configured.
     """
+    # 1. Try Streamlit's native SQL connection (uses SQLAlchemy)
     try:
         conn = st.connection("postgresql", type="sql")
         df = conn.query(_LIVE_DATA_QUERY, ttl=0)
-        if df is None or df.empty:
+        if df is not None and not df.empty:
+            return _postprocess_df(df)
+    except Exception as exc_sql:
+        # 2. Resilient fallback: direct psycopg2 connection (if SQLAlchemy is missing)
+        try:
+            import psycopg2
+            sec_pg = st.secrets.get("connections", {}).get("postgresql", {})
+            db_url = st.secrets.get("SUPABASE_DB_URL")
+            if db_url:
+                conn_pg = psycopg2.connect(db_url)
+            else:
+                conn_pg = psycopg2.connect(
+                    host=sec_pg.get("host"),
+                    port=sec_pg.get("port", 5432),
+                    dbname=sec_pg.get("database", "postgres"),
+                    user=sec_pg.get("username", "postgres"),
+                    password=sec_pg.get("password"),
+                )
+            df = pd.read_sql(_LIVE_DATA_QUERY, conn_pg)
+            conn_pg.close()
+            if df is not None and not df.empty:
+                return _postprocess_df(df)
+        except Exception:
+            st.sidebar.error(f"DB Error: {exc_sql}")
             return None
-        return _postprocess_df(df)
-    except Exception as exc:
-        st.sidebar.error(f"DB Error: {exc}")
-        return None
+    return None
 
 
 @st.cache_data(ttl=3600)
