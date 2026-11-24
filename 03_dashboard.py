@@ -12,9 +12,12 @@ Launch: streamlit run 03_dashboard.py
 
 import json
 import re
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Optional
+
 
 import numpy as np
 import pandas as pd
@@ -22,6 +25,34 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+
+# Groq LLM Aspect & Sentiment Analysis
+try:
+    from pipeline.groq_enricher import (
+        BPCL_ASPECTS,
+        DEFAULT_GROQ_MODEL,
+        FAST_GROQ_MODEL,
+        classify_batch_reviews,
+        classify_single_review,
+        get_groq_api_key,
+        is_groq_available,
+        update_supabase_aspects,
+    )
+except Exception:
+    BPCL_ASPECTS = [
+        "LPG Booking & Delivery", "Payment & Refunds", "App Technical & Authentication",
+        "Petrol Pump & Fueling", "Staff Behavior & Service", "Fuel Quality & Mileage",
+        "Rewards & SmartDrive", "Customer Support & Grievance", "Pricing & Subsidy",
+        "App UI & Navigation", "General Positive", "General Negative"
+    ]
+    DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+    FAST_GROQ_MODEL = "llama-3.1-8b-instant"
+    def get_groq_api_key(k=None): return None
+    def is_groq_available(k=None): return False
+    def classify_single_review(*a, **k): return {}
+    def classify_batch_reviews(r, *a, **k): return r
+    def update_supabase_aspects(*a, **k): return 0
+
 
 # =============================================================================
 # PAGE CONFIG  — must be first Streamlit call
@@ -123,17 +154,41 @@ def inject_global_css():
         div[data-testid="stSidebarContent"] hr {{
             border-color: rgba(255,255,255,0.15) !important;
         }}
-        div[data-testid="stSidebarContent"] [data-baseweb="select"] > div,
+        div[data-testid="stSidebarContent"] div[data-baseweb="input"],
+        div[data-testid="stSidebarContent"] div[data-baseweb="base-input"],
+        div[data-testid="stSidebarContent"] div[data-baseweb="textarea"] {
+            background: rgba(255,255,255,0.12) !important;
+            border: 1.5px solid rgba(255,255,255,0.25) !important;
+            border-radius: 8px !important;
+        }
+        div[data-testid="stSidebarContent"] div[data-baseweb="input"]:focus-within,
+        div[data-testid="stSidebarContent"] div[data-baseweb="base-input"]:focus-within {
+            border-color: {BRAND['gold']} !important;
+            box-shadow: 0 0 0 2px rgba(245,166,35,0.3) !important;
+        }
         div[data-testid="stSidebarContent"] input,
-        div[data-testid="stSidebarContent"] textarea {{
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
+        div[data-testid="stSidebarContent"] textarea {
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+            background: transparent !important;
+            font-size: 0.88rem !important;
+            font-weight: 500 !important;
+            caret-color: {BRAND['gold']} !important;
+        }
+        div[data-testid="stSidebarContent"] input::placeholder,
+        div[data-testid="stSidebarContent"] textarea::placeholder {
+            color: rgba(255,255,255,0.55) !important;
+            -webkit-text-fill-color: rgba(255,255,255,0.55) !important;
+        }
+        div[data-testid="stSidebarContent"] [data-baseweb="select"] > div {
+            background: rgba(255,255,255,0.12) !important;
+            border: 1.5px solid rgba(255,255,255,0.25) !important;
             color: #FFFFFF !important;
             border-radius: 8px !important;
-        }}
-        div[data-testid="stSidebarContent"] [data-baseweb="select"] * {{
+        }
+        div[data-testid="stSidebarContent"] [data-baseweb="select"] * {
             color: #FFFFFF !important;
-        }}
+        }
         div[data-testid="stSidebarContent"] button {{
             background: rgba(255,255,255,0.10) !important;
             border: 1px solid rgba(255,255,255,0.25) !important;
@@ -282,6 +337,55 @@ def inject_global_css():
             border: 1px solid {BRAND['border']} !important;
             border-top: none !important;
             border-radius: 0 0 8px 8px !important;
+        }}
+
+        /* ── Main Content Inputs & Textareas ──────────────────────── */
+        .main div[data-testid="stTextInput"] div[data-baseweb="input"],
+        .main div[data-testid="stTextArea"] div[data-baseweb="textarea"],
+        .main div[data-testid="stNumberInput"] div[data-baseweb="input"],
+        .main div[data-baseweb="input"],
+        .main div[data-baseweb="base-input"] {{
+            background-color: #FFFFFF !important;
+            border: 1.5px solid #CBD5E1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+        }}
+        .main div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+        .main div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within,
+        .main div[data-baseweb="input"]:focus-within {{
+            border-color: {BRAND['navy']} !important;
+            box-shadow: 0 0 0 3px rgba(0,45,98,0.12) !important;
+        }}
+        .main div[data-testid="stTextInput"] input,
+        .main div[data-testid="stTextArea"] textarea,
+        .main div[data-testid="stNumberInput"] input,
+        .main div[data-baseweb="input"] input,
+        .main div[data-baseweb="base-input"] input,
+        .main input[type="text"],
+        .main input[type="password"],
+        .main input[type="number"],
+        .main textarea {{
+            color: #0F172A !important;
+            -webkit-text-fill-color: #0F172A !important;
+            background-color: transparent !important;
+            font-size: 0.92rem !important;
+            font-weight: 500 !important;
+            caret-color: {BRAND['navy']} !important;
+        }}
+        .main div[data-testid="stTextInput"] input::placeholder,
+        .main div[data-testid="stTextArea"] textarea::placeholder,
+        .main div[data-baseweb="input"] input::placeholder {{
+            color: #94A3B8 !important;
+            -webkit-text-fill-color: #94A3B8 !important;
+        }}
+        .main div[data-baseweb="select"] > div {{
+            background-color: #FFFFFF !important;
+            border: 1.5px solid #CBD5E1 !important;
+            border-radius: 8px !important;
+            color: #0F172A !important;
+        }}
+        .main div[data-baseweb="select"] span {{
+            color: #0F172A !important;
         }}
 
         /* ── Selectbox, Slider labels ─────────────────────────────── */
@@ -1798,141 +1902,438 @@ def page_sentiment(df_full: pd.DataFrame, df_filt: pd.DataFrame):
 # =============================================================================
 # PAGE: ASPECT ANALYSIS
 # =============================================================================
-def page_aspects(topic_keywords: dict):
+def page_aspects(
+    df_raw: Optional[pd.DataFrame] = None,
+    df_filt: Optional[pd.DataFrame] = None,
+    topic_keywords: Optional[dict] = None,
+    source_label: str = "Live Pipeline Data",
+):
     st.markdown(
         f'<h2 style="font-size:1.5rem;font-weight:700;color:{BRAND["navy"]};margin-bottom:0.25rem">'
-        'Aspect-Based Analysis</h2>'
+        'Aspect-Based Sentiment & Root Cause Intelligence</h2>'
         f'<p style="color:{BRAND["text_secondary"]};font-size:0.875rem;margin-bottom:1.5rem">'
-        'Granular customer aspect insights from HelloBPCL_Detailed_Analysis.csv</p>',
+        'Enterprise granular classification powered by Groq LLM (Llama 3.3 70B) & ABSA benchmark</p>',
         unsafe_allow_html=True,
     )
 
-    df = load_aspect_csv()
-    if df is None:
-        st.warning(
-            "HelloBPCL_Detailed_Analysis.csv not found. This page uses the aspect analysis "
-            "exported from the ABSA notebook. Place the file in the project root to enable it.",
-            icon=None,
-        )
-        return
+    is_live = (source_label == "Live Pipeline Data")
 
-    sentiments = sorted(df["Sentiment"].unique()) if "Sentiment" in df.columns else ["Negative"]
+    # ── Resolve Active Dataset ──────────────────────────────────────────────
+    if is_live and df_filt is not None and not df_filt.empty:
+        df = df_filt.copy()
+        text_col = "content"
+        aspect_col = "aspect"
+        date_col = "at"
+        rating_col = "rating"
+        sent_col = "sentiment"
+        source_col = "source"
+        dataset_subtitle = "Live Multi-Channel Feedback (Supabase PostgreSQL)"
+    else:
+        raw_h = load_aspect_csv()
+        if raw_h is not None and not raw_h.empty:
+            df = raw_h.copy()
+            text_col = "Review_Text" if "Review_Text" in df.columns else "content"
+            aspect_col = "Aspect" if "Aspect" in df.columns else "aspect"
+            date_col = "Date" if "Date" in df.columns else "at"
+            rating_col = "Rating" if "Rating" in df.columns else "score"
+            sent_col = "Sentiment" if "Sentiment" in df.columns else "sentiment"
+            source_col = "source" if "source" in df.columns else None
+            dataset_subtitle = "Historical Benchmark Dataset (HelloBPCL_Detailed_Analysis.csv)"
+        elif df_filt is not None and not df_filt.empty:
+            df = df_filt.copy()
+            text_col = "content"
+            aspect_col = "aspect"
+            date_col = "at"
+            rating_col = "rating"
+            sent_col = "sentiment"
+            source_col = "source"
+            dataset_subtitle = "Live Multi-Channel Feedback (Supabase PostgreSQL)"
+        else:
+            st.warning("No review data available for Aspect Analysis.")
+            return
+
+    # Standardize to normalized view dataframe
+    norm_df = pd.DataFrame()
+    norm_df["aspect"] = df[aspect_col].fillna("General").astype(str) if aspect_col in df.columns else "General"
+    norm_df["sentiment"] = df[sent_col].fillna("Neutral").astype(str) if sent_col in df.columns else "Neutral"
+    norm_df["content"] = df[text_col].fillna("").astype(str) if text_col in df.columns else ""
+    norm_df["rating"] = pd.to_numeric(df[rating_col], errors="coerce") if rating_col in df.columns else None
+    norm_df["at"] = df[date_col] if date_col in df.columns else None
+    norm_df["source"] = df[source_col].fillna("csv") if (source_col and source_col in df.columns) else "csv"
+    norm_df["review_id"] = df["review_id"] if "review_id" in df.columns else [f"row_{i}" for i in range(len(df))]
+    if "app_version" in df.columns:
+        norm_df["app_version"] = df["app_version"]
+    elif "App_Version" in df.columns:
+        norm_df["app_version"] = df["App_Version"]
+    else:
+        norm_df["app_version"] = "—"
+
+    # ── Groq LLM Intelligence Suite ─────────────────────────────────────────
+    current_key = get_groq_api_key()
+    groq_ready = bool(current_key and current_key.startswith("gsk_"))
+
+    if groq_ready:
+        st.markdown(
+            f"""
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:0.75rem 1.25rem;
+                        margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:10px">
+                <i class="fa-solid fa-brain" style="color:#059669;font-size:1.1rem"></i>
+                <div>
+                  <strong style="color:#065F46;font-size:0.875rem">Groq LPU AI Engine Active</strong>
+                  <span style="color:#047857;font-size:0.78rem;margin-left:8px">
+                    Model: {DEFAULT_GROQ_MODEL} (Sub-second enterprise inference)
+                  </span>
+                </div>
+              </div>
+              <span style="background:#059669;color:#FFFFFF;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;letter-spacing:0.04em">
+                <i class="fa-solid fa-circle" style="font-size:0.5rem;vertical-align:middle;margin-right:4px"></i>READY
+              </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:0.75rem 1.25rem;
+                        margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:10px">
+                <i class="fa-solid fa-key" style="color:#D97706;font-size:1.1rem"></i>
+                <div>
+                  <strong style="color:#92400E;font-size:0.875rem">Groq API Key Required for LLM Aspect Categorization</strong>
+                  <span style="color:#B45309;font-size:0.78rem;margin-left:8px">
+                    Enter your Groq key below to categorize reviews using Llama 3.3 70B
+                  </span>
+                </div>
+              </div>
+              <a href="https://console.groq.com/keys" target="_blank"
+                 style="background:#D97706;color:#FFFFFF;padding:4px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;text-decoration:none">
+                Get Free API Key
+              </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Expander: Groq Setup & Live Verbatim Tester
+    with st.expander("Groq AI Intelligence Configuration & Real-Time Verbatim Tester", expanded=(not groq_ready)):
+        g_c1, g_c2 = st.columns([1.2, 1.8])
+
+        with g_c1:
+            st.markdown(
+                f'<div style="font-size:0.75rem;font-weight:700;color:{BRAND["navy"]};text-transform:uppercase;'
+                'letter-spacing:0.06em;margin-bottom:0.5rem"><i class="fa-solid fa-sliders"></i> LLM Configuration</div>',
+                unsafe_allow_html=True,
+            )
+            input_key = st.text_input(
+                "Groq API Key",
+                value=current_key or "",
+                type="password",
+                placeholder="gsk_...",
+                key="groq_input_key_field",
+                help="Enter your Groq API key from console.groq.com",
+            )
+            sel_model = st.selectbox(
+                "Select Model",
+                [DEFAULT_GROQ_MODEL, FAST_GROQ_MODEL],
+                index=0,
+                key="groq_model_sel",
+                help="Llama 3.3 70B delivers highest enterprise accuracy; 8B delivers maximum speed.",
+            )
+            if st.button("Apply API Key", key="save_groq_key_btn"):
+                if input_key.strip():
+                    st.session_state["groq_api_key"] = input_key.strip()
+                    os.environ["GROQ_API_KEY"] = input_key.strip()
+                    st.success("Groq API key activated for this session.")
+                    st.rerun()
+                else:
+                    st.warning("Please enter a valid key starting with gsk_.")
+
+        with g_c2:
+            st.markdown(
+                f'<div style="font-size:0.75rem;font-weight:700;color:{BRAND["navy"]};text-transform:uppercase;'
+                'letter-spacing:0.06em;margin-bottom:0.5rem"><i class="fa-solid fa-microscope"></i> Live Verbatim Classifier</div>',
+                unsafe_allow_html=True,
+            )
+            sample_val = (
+                "Booked cylinder 8 days ago via Hello BPCL app. Money debited Rs. 850 from SBI account but status still shows Pending. "
+                "Delivery boy demanded Rs. 50 extra for delivery."
+            )
+            test_text = st.text_area(
+                "Customer Review / Verbatim",
+                value=sample_val,
+                height=80,
+                key="groq_test_verbatim",
+            )
+
+            if st.button("Classify with Groq LLM", key="run_single_groq_test"):
+                effective_key = input_key.strip() or current_key
+                if not effective_key:
+                    st.warning("Please provide a Groq API key above first.")
+                else:
+                    with st.spinner("Analyzing with Groq LPU engine..."):
+                        t0 = time.time()
+                        analysis = classify_single_review(test_text, api_key=effective_key, model=sel_model)
+                        elapsed = time.time() - t0
+
+                    asp_badge = analysis.get("aspect", "General")
+                    sub_asp = analysis.get("sub_aspect", "")
+                    sent = analysis.get("sentiment", "Neutral")
+                    score = analysis.get("sentiment_score", 0.0)
+                    urgency = analysis.get("urgency", "Normal")
+                    root_cause = analysis.get("root_cause", "")
+
+                    urg_color = "#DC2626" if urgency == "High" else "#2563EB"
+                    urg_bg = "#FEE2E2" if urgency == "High" else "#DBEAFE"
+
+                    st.markdown(
+                        f"""
+                        <div style="background:{BRAND['card']};border:1.5px solid {BRAND['navy']};border-radius:10px;padding:1rem;margin-top:0.75rem">
+                          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:6px">
+                            <span style="background:{BRAND['navy']};color:#FFFFFF;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700">
+                              <i class="fa-solid fa-tag"></i> {asp_badge}
+                            </span>
+                            <span style="background:#F1F5F9;color:{BRAND['text_primary']};padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:600">
+                              {sub_asp}
+                            </span>
+                            <span style="background:{urg_bg};color:{urg_color};padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700">
+                              {urgency} Urgency
+                            </span>
+                            {sentiment_pill_html(sent)}
+                            <span style="font-size:0.72rem;color:{BRAND['text_muted']}">Score: {score:+.2f} &bull; {elapsed*1000:.0f}ms</span>
+                          </div>
+                          <div style="font-size:0.84rem;color:{BRAND['text_primary']};line-height:1.5">
+                            <strong>Root Cause:</strong> {root_cause}
+                          </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+    # ── Batch Database Aspect Enricher (Live Data Mode) ─────────────────────
+    if is_live and df_raw is not None and not df_raw.empty:
+        # Check how many reviews need aspect classification
+        gen_mask = (df_raw["aspect"].fillna("").str.lower().isin(["", "general", "none", "unknown"]))
+        un_count = int(gen_mask.sum())
+
+        if un_count > 0:
+            st.markdown(
+                f"""
+                <div style="background:{BRAND['card']};border:1.5px solid {BRAND['border']};border-left:4px solid {BRAND['gold']};
+                            border-radius:8px;padding:1rem 1.25rem;margin-top:1rem;margin-bottom:1.5rem;
+                            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                  <div>
+                    <div style="font-weight:700;color:{BRAND['navy']};font-size:0.95rem">
+                      <i class="fa-solid fa-wand-magic-sparkles" style="color:{BRAND['gold']}"></i>
+                      Batch Aspect Classification Available ({un_count:,} Reviews)
+                    </div>
+                    <div style="font-size:0.8rem;color:{BRAND['text_secondary']};margin-top:2px">
+                      Currently {un_count:,} reviews have baseline generic classification. Use Groq LLM to categorize them into exact BPCL business verticals & update Supabase PostgreSQL.
+                    </div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            bc1, bc2, _ = st.columns([1.5, 1.5, 3])
+            with bc1:
+                run_test_batch = st.button("Classify 20 Reviews (Quick Test)", key="btn_groq_batch_20")
+            with bc2:
+                run_full_batch = st.button(f"Classify All {un_count:,} Reviews", key="btn_groq_batch_all")
+
+            if run_test_batch or run_full_batch:
+                effective_key = get_groq_api_key()
+                if not effective_key:
+                    st.error("Please enter a Groq API key in the configuration panel above.")
+                else:
+                    limit_n = 20 if run_test_batch else un_count
+                    subset_df = df_raw[gen_mask].head(limit_n)
+                    records_to_enrich = subset_df.to_dict(orient="records")
+
+                    prog_bar = st.progress(0.0)
+                    status_txt = st.empty()
+
+                    def on_prog(done, total, msg):
+                        frac = min(1.0, done / max(1, total))
+                        prog_bar.progress(frac)
+                        status_txt.markdown(f'<div style="font-size:0.8rem;color:{BRAND["text_secondary"]}">{msg}</div>', unsafe_allow_html=True)
+
+                    try:
+                        enriched = classify_batch_reviews(
+                            records_to_enrich,
+                            api_key=effective_key,
+                            model=DEFAULT_GROQ_MODEL,
+                            batch_size=12,
+                            progress_callback=on_prog,
+                        )
+
+                        # Write updates back to Supabase PostgreSQL
+                        db_conn_url = os.environ.get("SUPABASE_DB_URL")
+                        if db_conn_url:
+                            n_updated = update_supabase_aspects(db_conn_url, enriched)
+                            st.success(f"Successfully enriched and updated {n_updated} reviews in Supabase with Groq aspects!")
+                            st.cache_data.clear()
+                            time.sleep(1.2)
+                            st.rerun()
+                        else:
+                            st.warning("Database URL not found in environment; enriched records locally.")
+                    except Exception as b_err:
+                        st.error(f"Batch categorization error: {b_err}")
+
+    st.divider()
+
+    # ── Aspect KPIs ──────────────────────────────────────────────────────────
+    sentiments = ["All"] + sorted([s for s in norm_df["sentiment"].unique() if s in ("Positive", "Neutral", "Negative")])
     sel_sent = st.radio(
         "Filter by Sentiment",
         sentiments,
         horizontal=True,
-        index=sentiments.index("Negative") if "Negative" in sentiments else 0,
-        key="aspect_sent_v2",
+        index=0,
+        key="aspect_sent_filter_v3",
     )
 
-    fd = df[df["Sentiment"] == sel_sent].copy() if "Sentiment" in df.columns else df.copy()
+    fd = norm_df if sel_sent == "All" else norm_df[norm_df["sentiment"] == sel_sent].copy()
 
-    # KPIs
-    kc1, kc2, kc3 = st.columns(3)
-    kc1.metric("Total Reviews", f"{len(fd):,}", delta=f"of {len(df):,} total")
-    kc2.metric("Unique Aspects", f"{fd['Aspect'].nunique()}" if "Aspect" in fd.columns else "N/A")
-    if "Aspect" in fd.columns and not fd.empty:
-        top_a = fd["Aspect"].value_counts()
-        kc3.metric(
-            "Top Aspect",
-            top_a.index[0],
-            delta=f"{top_a.values[0]:,} mentions ({top_a.values[0]/len(fd)*100:.1f}%)",
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Total Reviews", f"{len(fd):,}", delta=f"of {len(norm_df):,} in view")
+    k2.metric("Active Aspects", f"{fd['aspect'].nunique()}")
+    if not fd.empty:
+        top_asp_series = fd["aspect"].value_counts()
+        top_name = top_asp_series.index[0]
+        top_count = top_asp_series.values[0]
+        pct = (top_count / max(1, len(fd))) * 100
+        k3.metric("Top Aspect", top_name, delta=f"{top_count:,} mentions ({pct:.1f}%)")
+    else:
+        k3.metric("Top Aspect", "N/A")
+
+    neg_share = (norm_df["sentiment"] == "Negative").sum() / max(1, len(norm_df)) * 100
+    k4.metric("Negative Share", f"{neg_share:.1f}%", delta="Critical Focus" if neg_share > 30 else "Normal")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Aspect Distribution Chart ────────────────────────────────────────────
+    if not fd.empty:
+        asp_counts = fd["aspect"].value_counts().head(12)
+        bar_colors = [
+            BRAND["negative"] if sel_sent == "Negative" else (
+                BRAND["positive"] if sel_sent == "Positive" else BRAND["navy"]
+            )
+        ] * len(asp_counts)
+
+        fig_asp = go.Figure(
+            go.Bar(
+                y=asp_counts.index[::-1],
+                x=asp_counts.values[::-1],
+                orientation="h",
+                marker=dict(color=bar_colors[::-1]),
+                text=asp_counts.values[::-1],
+                textposition="auto",
+                hovertemplate="<b>%{y}</b><br>Mentions: %{x:,}<extra></extra>",
+            )
         )
-
-    st.divider()
-
-    if "Aspect" in fd.columns and not fd.empty:
-        asp_counts = fd["Aspect"].value_counts().head(15)
-        fig_asp = go.Figure(go.Bar(
-            y=asp_counts.index,
-            x=asp_counts.values,
-            orientation="h",
-            marker=dict(
-                color=asp_counts.values,
-                colorscale="Reds" if sel_sent == "Negative" else "Blues",
-                showscale=False,
-            ),
-            text=asp_counts.values,
-            textposition="auto",
-            hovertemplate="<b>%{y}</b><br>Mentions: %{x:,}<extra></extra>",
-        ))
         fig_asp.update_layout(
             **_CHART_LAYOUT,
             title=dict(
-                text=f"Top 15 Aspects — {sel_sent} Sentiment",
-                font=dict(size=14, color=BRAND["text_primary"]), x=0, xanchor="left",
+                text=f"Aspect Mentions Distribution — {sel_sent} Sentiment",
+                font=dict(size=14, color=BRAND["text_primary"]),
+                x=0,
+                xanchor="left",
             ),
-            xaxis=_axes_style( title="Mentions"),
-            yaxis=_axes_style( title=""),
-            height=480,
+            xaxis=_axes_style(title="Review Mentions"),
+            yaxis=_axes_style(title=""),
+            height=420,
             margin=dict(l=0, r=0, t=50, b=0),
         )
         st.plotly_chart(fig_asp, use_container_width=True, config={"displayModeBar": False})
 
         st.divider()
 
-        # Drill-down
-        st.markdown('<div class="section-header"><i class="fa-solid fa-crosshairs"></i> Drill-Down by Aspect</div>', unsafe_allow_html=True)
-        avail_aspects = sorted(fd["Aspect"].unique().tolist())
-        sel_asp = st.selectbox("Select Aspect", avail_aspects, key="asp_drilldown_v2")
-        asp_df  = fd[fd["Aspect"] == sel_asp].copy()
+        # ── Aspect Drilldown ─────────────────────────────────────────────────
+        st.markdown(
+            '<div class="section-header"><i class="fa-solid fa-crosshairs"></i> Aspect Drill-Down & Verbatim Inspection</div>',
+            unsafe_allow_html=True,
+        )
+
+        avail_aspects = sorted(fd["aspect"].unique().tolist())
+        d_col1, d_col2 = st.columns([2, 1])
+        with d_col1:
+            sel_asp = st.selectbox("Select Business Aspect", avail_aspects, key="aspect_drill_sel")
+        with d_col2:
+            drill_sort = st.selectbox("Sort Verbatims", ["Latest First", "Lowest Rating", "Highest Rating"], key="drill_sort")
+
+        asp_df = fd[fd["aspect"] == sel_asp].copy()
 
         dc1, dc2, dc3, dc4 = st.columns(4)
-        dc1.metric("Reviews", len(asp_df))
-        avg_r = asp_df["Rating"].mean() if "Rating" in asp_df.columns else None
-        dc2.metric("Avg Rating", f"{avg_r:.1f} / 5" if avg_r else "N/A")
-        if "Rating" in asp_df.columns and not asp_df.empty:
-            dc3.metric("4-5 Star", f"{((asp_df['Rating'] >= 4).sum() / len(asp_df) * 100):.0f}%")
-            dc4.metric("1-2 Star", f"{((asp_df['Rating'] <= 2).sum() / len(asp_df) * 100):.0f}%")
+        dc1.metric("Aspect Volume", f"{len(asp_df):,}")
+        avg_r = asp_df["rating"].mean() if "rating" in asp_df.columns and asp_df["rating"].notna().any() else None
+        dc2.metric("Avg Star Rating", f"{avg_r:.2f} / 5" if avg_r else "N/A")
+        if "rating" in asp_df.columns and asp_df["rating"].notna().any():
+            pos_rt = ((asp_df["rating"] >= 4).sum() / max(1, len(asp_df))) * 100
+            neg_rt = ((asp_df["rating"] <= 2).sum() / max(1, len(asp_df))) * 100
+            dc3.metric("4-5 Star Share", f"{pos_rt:.0f}%")
+            dc4.metric("1-2 Star Share", f"{neg_rt:.0f}%")
+        else:
+            dc3.metric("4-5 Star Share", "N/A")
+            dc4.metric("1-2 Star Share", "N/A")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Download for this aspect
-        if "Review_Text" in asp_df.columns:
-            disp_cols = [c for c in ["Date", "Rating", "Review_Text", "App_Version", "Sentiment"] if c in asp_df.columns]
-            csv_data  = asp_df[disp_cols].to_csv(index=False)
-            st.download_button(
-                label=f"Download {sel_asp} Reviews ({len(asp_df)} rows)",
-                data=csv_data,
-                file_name=f"aspect_{sel_asp.replace(' ','_')}.csv",
-                mime="text/csv",
+        # Download button
+        csv_data = asp_df.to_csv(index=False)
+        st.download_button(
+            label=f"Export {sel_asp} Verbatims ({len(asp_df)} rows)",
+            data=csv_data,
+            file_name=f"bpcl_aspect_{sel_asp.replace(' ', '_').lower()}.csv",
+            mime="text/csv",
+        )
+
+        # Sort drilldown cards
+        if drill_sort == "Latest First" and "at" in asp_df.columns:
+            asp_df = asp_df.sort_values("at", ascending=False)
+        elif drill_sort == "Lowest Rating" and "rating" in asp_df.columns:
+            asp_df = asp_df.sort_values("rating", ascending=True)
+        elif drill_sort == "Highest Rating" and "rating" in asp_df.columns:
+            asp_df = asp_df.sort_values("rating", ascending=False)
+
+        # Render Review Cards
+        for _, row in asp_df.head(15).iterrows():
+            rating = int(row["rating"]) if pd.notna(row.get("rating")) else None
+            date_s = str(row.get("at", ""))[:10] if pd.notna(row.get("at")) else "—"
+            content = str(row.get("content", ""))
+            sent = str(row.get("sentiment", "Neutral"))
+            stars = star_html(rating)
+            s_pill = sentiment_pill_html(sent)
+            src = str(row.get("source", "google_play"))
+
+            st.markdown(
+                f"""
+                <div class="review-card">
+                  <div class="review-card-header">
+                    {source_badge_html(src)}
+                    <span style="display:inline-flex;align-items:center;gap:3px">{stars}</span>
+                    {s_pill}
+                    <span style="background:#F1F5F9;color:{BRAND['navy']};padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700">
+                      {sel_asp}
+                    </span>
+                  </div>
+                  <div class="review-body">{content[:500]}</div>
+                  <div class="review-card-meta">
+                    <div class="review-card-meta-item">
+                      <i class="fa-solid fa-calendar" style="font-size:0.65rem"></i>
+                      {date_s}
+                    </div>
+                    <div class="review-card-meta-item">
+                      <i class="fa-solid fa-code-branch" style="font-size:0.65rem"></i>
+                      v{row.get("app_version", "—")}
+                    </div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-        # Cards
-        if "Review_Text" in asp_df.columns:
-            if "Date" in asp_df.columns:
-                asp_df = asp_df.sort_values("Date", ascending=False)
-            for _, row in asp_df.head(10).iterrows():
-                rating   = int(row["Rating"]) if "Rating" in row and pd.notna(row["Rating"]) else None
-                date_s   = str(row.get("Date", ""))[:10]
-                content  = str(row.get("Review_Text", ""))
-                sent     = str(row.get("Sentiment", "Neutral"))
-                stars    = star_html(rating)
-                s_pill   = sentiment_pill_html(sent)
-
-                st.markdown(
-                    f"""
-                    <div class="review-card">
-                      <div class="review-card-header">
-                        {source_badge_html('google_play')}
-                        <span style="display:inline-flex;align-items:center;gap:3px">{stars}</span>
-                        {s_pill}
-                      </div>
-                      <div class="review-body">{content[:400]}</div>
-                      <div class="review-card-meta">
-                        <div class="review-card-meta-item">
-                          <i class="fa-solid fa-calendar" style="font-size:0.65rem"></i>
-                          {date_s}
-                        </div>
-                        <div class="review-card-meta-item">
-                          <i class="fa-solid fa-code-branch" style="font-size:0.65rem"></i>
-                          v{row.get("App_Version", "—")}
-                        </div>
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
 
 
 # =============================================================================
@@ -2243,7 +2644,7 @@ def main():
         elif sub == "Sentiment":
             page_sentiment(df_raw, df_filt)
         elif sub == "Aspects":
-            page_aspects(topic_kws)
+            page_aspects(df_raw, df_filt, topic_kws, source_label)
         elif sub == "Voice Explorer":
             page_explorer(df_filt, topic_kws)
 

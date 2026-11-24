@@ -327,6 +327,8 @@ def preprocess_text(text: str) -> str:
 def enrich_records(
     records: list[dict],
     use_hf: bool = True,
+    use_groq: bool = True,
+    groq_api_key: Optional[str] = None,
     topic_keywords: Optional[dict] = None,
     batch_size: int = 32,
 ) -> list[dict]:
@@ -336,21 +338,35 @@ def enrich_records(
       - sentiment, sentiment_score, ai_confidence, ai_compound
       - topic, aspect
 
-    Processes in batches for speed (HF pipeline supports batching).
+    If Groq API key is available and use_groq=True, uses Groq LLM (Llama 3.3 70B)
+    for high-precision aspect classification & root cause extraction.
+    Otherwise falls back seamlessly to RoBERTa/VADER + keyword matching.
+
     Returns the same list with fields added in-place.
     """
     if not records:
         return records
 
+    # 1. Check if Groq LLM is available for aspect enrichment
+    groq_active = False
+    if use_groq:
+        try:
+            from pipeline.groq_enricher import is_groq_available, classify_batch_reviews
+            if is_groq_available(groq_api_key):
+                groq_active = True
+                logger.info("Groq LLM detected — will use Groq for aspect categorization & root cause.")
+        except Exception as groq_chk_err:
+            logger.debug("Groq check failed: %s", groq_chk_err)
+
     kws = topic_keywords or TOPIC_KEYWORDS
 
-    # Lazy-load model once for the whole batch
+    # Lazy-load model once for the whole batch (for sentiment if Groq not used or as fallback)
     pipe = None
-    if use_hf:
+    if use_hf and not groq_active:
         pipe = _load_hf_model()
 
     total = len(records)
-    logger.info("NLP enrichment: %d records (HuggingFace=%s)", total, pipe is not None)
+    logger.info("NLP enrichment: %d records (Groq=%s, HuggingFace=%s)", total, groq_active, pipe is not None)
 
     for i, rec in enumerate(records):
         try:
@@ -358,7 +374,7 @@ def enrich_records(
             clean = preprocess_text(raw_text)
             rec["processed_text"] = clean
 
-            # Sentiment
+            # Sentiment (Base)
             if pipe:
                 label, confidence, compound = _hf_sentiment(clean, pipe)
             else:
@@ -370,7 +386,7 @@ def enrich_records(
             rec["ai_confidence"] = round(confidence, 4)
             rec["ai_compound"] = round(compound, 4)
 
-            # Topic & Aspect
+            # Topic & Aspect (Keyword baseline)
             rec["topic"] = classify_topic(raw_text, kws)
             rec["aspect"] = classify_aspect(raw_text)
 
@@ -387,6 +403,15 @@ def enrich_records(
 
         if (i + 1) % 100 == 0:
             logger.info("  Enriched %d / %d records…", i + 1, total)
+
+    # 2. If Groq is active, elevate aspect classification with Llama 3.3 70B
+    if groq_active:
+        try:
+            from pipeline.groq_enricher import classify_batch_reviews
+            records = classify_batch_reviews(records, api_key=groq_api_key)
+            logger.info("Groq LLM aspect categorization successfully applied to %d records.", total)
+        except Exception as groq_err:
+            logger.warning("Groq batch categorization encountered error (%s) — retained baseline NLP.", groq_err)
 
     logger.info("NLP enrichment complete: %d records processed.", total)
     return records
