@@ -127,45 +127,76 @@ def scrape_google_play(conn) -> list[dict]:
 # ---------------------------------------------------------------------------
 # 2. Apple App Store (iOS)
 # ---------------------------------------------------------------------------
-IOS_APP_ID = "1472380988"  # Hello BPCL iOS App ID – verify at apps.apple.com
+IOS_APP_ID = "6755145577"  # Hello BPCL iOS App ID (apps.apple.com/in/app/hellobpcl/id6755145577)
 
 
 def scrape_app_store(conn) -> list[dict]:
-    """Fetch new App Store reviews for Hello BPCL (iOS)."""
+    """Fetch new App Store reviews for Hello BPCL (iOS) via direct Apple JSON feed."""
     records: list[dict] = []
-    try:
-        from app_store_scraper import AppStore
+    latest_ts = _get_latest_ts(conn, "app_store")
+    logger.info("App Store: fetching Hello BPCL (id=%s) since %s", IOS_APP_ID, latest_ts)
 
-        latest_ts = _get_latest_ts(conn, "app_store")
-        logger.info("App Store: fetching Hello BPCL since %s", latest_ts)
-        try:
-            app = AppStore(country="in", app_name="hello-bpcl", app_id=IOS_APP_ID)
-            app.review(how_many=200)
-            for r in app.reviews:
-                ts = r.get("date")
-                if ts:
-                    if ts.tzinfo is None:
-                        ts = ts.replace(tzinfo=timezone.utc)
-                    if ts <= latest_ts:
-                        continue
-                records.append(
-                    {
-                        "review_id": _make_review_id("app_store", str(r.get("userName", "")), str(r.get("date", ""))),
-                        "source": "app_store",
-                        "channel_type": "app_review",
-                        "app_name": "Hello BPCL",
-                        "user_name": r.get("userName", ""),
-                        "content": r.get("review", ""),
-                        "rating": r.get("rating"),
-                        "created_at": ts or _now_utc(),
-                        "raw_metadata": {"title": r.get("title", "")},
-                    }
-                )
-            logger.info("App Store Hello BPCL: %d new records", len(records))
-        except Exception as exc:
-            logger.error("App Store scraper failed: %s", exc)
-    except ImportError:
-        logger.error("app-store-scraper not installed. Run: pip install app-store-scraper")
+    try:
+        from dateutil import parser as dateutil_parser
+
+        # Apple iTunes customer reviews feed (pages 1 to 5, up to 250 reviews)
+        for page in range(1, 6):
+            url = f"https://itunes.apple.com/in/rss/customerreviews/page={page}/id={IOS_APP_ID}/sortby=mostrecent/json"
+            try:
+                resp = requests.get(url, timeout=12)
+                if resp.status_code != 200:
+                    break
+                data = resp.json()
+                entries = data.get("feed", {}).get("entry", [])
+                if not entries:
+                    break
+
+                for e in entries:
+                    try:
+                        content = e.get("content", {}).get("label", "").strip()
+                        title = e.get("title", {}).get("label", "").strip()
+                        full_text = f"{title}\n{content}".strip() if title else content
+                        if not full_text:
+                            continue
+
+                        user_name = e.get("author", {}).get("name", {}).get("label", "App Store User")
+                        rating_str = e.get("im:rating", {}).get("label", "5")
+                        rating = float(rating_str) if rating_str else None
+                        app_version = e.get("im:version", {}).get("label", "")
+
+                        date_str = e.get("updated", {}).get("label")
+                        ts = dateutil_parser.parse(date_str) if date_str else _now_utc()
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=timezone.utc)
+
+                        if ts <= latest_ts:
+                            continue  # already ingested
+
+                        review_id = _make_review_id("app_store", IOS_APP_ID, user_name, str(ts))
+                        records.append(
+                            {
+                                "review_id": review_id,
+                                "source": "app_store",
+                                "channel_type": "app_review",
+                                "app_name": "Hello BPCL",
+                                "user_name": user_name,
+                                "content": full_text,
+                                "rating": rating,
+                                "app_version": app_version,
+                                "created_at": ts,
+                                "raw_metadata": {"title": title, "entry_id": e.get("id", {}).get("label")},
+                            }
+                        )
+                    except Exception as parse_err:
+                        logger.debug("Failed to parse App Store entry: %s", parse_err)
+            except Exception as page_err:
+                logger.warning("Error fetching App Store page %d: %s", page, page_err)
+                break
+
+        logger.info("App Store Hello BPCL: %d new records", len(records))
+    except Exception as exc:
+        logger.error("App Store scraper failed: %s", exc)
+
     return records
 
 
@@ -550,8 +581,8 @@ def scrape_instagram(conn) -> list[dict]:
 # 7. Consumer Complaints Forum (ConsumerComplaints.in)
 # ---------------------------------------------------------------------------
 CONSUMER_FORUM_URLS = [
-    "https://www.consumercomplaints.in/?company=bpcl&category=&status=&sort=newest",
-    "https://www.consumercomplaints.in/?company=bharatgas&category=&status=&sort=newest",
+    "https://www.consumercomplaints.in/?search=bharatgas",
+    "https://www.consumercomplaints.in/?search=bpcl",
 ]
 
 
@@ -574,65 +605,58 @@ def scrape_consumer_forum(conn) -> list[dict]:
         for url in CONSUMER_FORUM_URLS:
             try:
                 resp = requests.get(url, headers=headers, timeout=15)
-                resp.raise_for_status()
+                if resp.status_code != 200:
+                    continue
                 soup = BeautifulSoup(resp.text, "html.parser")
 
-                # Each complaint is a <div class="complaint-item"> or similar
-                # Adapt selectors to the actual page structure
-                complaint_blocks = soup.select("div.complaint-box, div.review-box, article.complaint")
-
-                if not complaint_blocks:
-                    # Fallback: try to find any complaint-like containers
-                    complaint_blocks = soup.select("div[class*='complaint']")
+                complaint_blocks = soup.select("div.complaint-box-results, div.complaint-box, article.complaint")
 
                 for block in complaint_blocks:
                     try:
-                        title_el = block.select_one("h2, h3, .complaint-title, .title")
-                        body_el = block.select_one("p, .complaint-body, .description")
-                        date_el = block.select_one("time, .date, .posted-on, [datetime]")
-                        user_el = block.select_one(".username, .author, .user-name")
+                        title_el = block.select_one("a, h2, h3, .complaint-title")
+                        desc_el = block.select_one("div.complaint-box-results__info, p, .description")
+                        date_el = block.select_one("time, .date, [datetime]")
 
                         title = title_el.get_text(strip=True) if title_el else ""
-                        body = body_el.get_text(strip=True) if body_el else ""
-                        content = f"{title}\n{body}".strip()
-                        if not content:
+                        body = desc_el.get_text(strip=True) if desc_el else ""
+                        content = f"{title}\n{body}".strip() if body else title
+                        if not content or len(content) < 5:
                             continue
 
-                        # Parse date
                         ts = _now_utc()
                         if date_el:
                             dt_str = date_el.get("datetime", date_el.get_text(strip=True))
                             try:
                                 from dateutil import parser as dateutil_parser
-                                ts = dateutil_parser.parse(dt_str).replace(tzinfo=timezone.utc)
+                                parsed_ts = dateutil_parser.parse(dt_str)
+                                if parsed_ts.tzinfo is None:
+                                    parsed_ts = parsed_ts.replace(tzinfo=timezone.utc)
+                                ts = parsed_ts
                             except Exception:
                                 pass
 
                         if ts <= latest_ts:
                             continue
 
-                        user = user_el.get_text(strip=True) if user_el else "Anonymous"
-                        link_el = block.select_one("a[href]")
-                        link = link_el["href"] if link_el else url
-
                         records.append(
                             {
-                                "review_id": _make_review_id("consumer_forum", link, content[:100]),
+                                "review_id": _make_review_id("consumer_forum", content[:80], str(ts)),
                                 "source": "consumer_forum",
                                 "channel_type": "forum",
-                                "user_name": user,
+                                "app_name": "Bharatgas / BPCL",
+                                "user_name": "Consumer Complaints User",
                                 "content": content,
-                                "rating": None,
+                                "rating": 1.0,
                                 "created_at": ts,
-                                "raw_metadata": {"url": link, "source_url": url},
+                                "raw_metadata": {"url": url},
                             }
                         )
-                    except Exception as exc:
-                        logger.error("Failed to parse complaint block: %s", exc)
+                    except Exception as parse_err:
+                        logger.debug("Failed parsing complaint block: %s", parse_err)
 
-                time.sleep(2)
-            except Exception as exc:
-                logger.error("Consumer forum scrape failed for %s: %s", url, exc)
+                time.sleep(1)
+            except Exception as req_err:
+                logger.warning("Error scraping %s: %s", url, req_err)
     except ImportError:
         logger.error("beautifulsoup4 not installed. Run: pip install beautifulsoup4 lxml")
 
